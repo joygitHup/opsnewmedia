@@ -222,8 +222,8 @@ export default function TeamPage() {
       </div>
 
       <Card>
-        <CardHeader className="pb-0">
-          <Tabs defaultValue="members" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="members" value={activeTab} onValueChange={setActiveTab}>
+          <CardHeader className="pb-0">
             <TabsList>
               <TabsTrigger value="members" className="gap-2">
                 <Users className="w-4 h-4" />
@@ -234,11 +234,10 @@ export default function TeamPage() {
                 角色权限
               </TabsTrigger>
             </TabsList>
-          </Tabs>
-        </CardHeader>
+          </CardHeader>
 
-        <CardContent className="pt-4">
-          <TabsContent value="members" className="mt-0">
+          <CardContent className="pt-4">
+            <TabsContent value="members" className="mt-0">
             <div className="flex items-center gap-3 mb-4">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
@@ -415,6 +414,7 @@ export default function TeamPage() {
             ))}
           </TabsContent>
         </CardContent>
+        </Tabs>
       </Card>
 
       {/* 邀请成员弹窗 */}
