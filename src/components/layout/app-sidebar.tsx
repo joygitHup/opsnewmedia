@@ -24,6 +24,7 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -36,6 +37,7 @@ const menuItems = [
     items: [
       { icon: LayoutDashboard, label: '数据看板', href: '/dashboard' },
       { icon: FileEdit, label: '内容创作', href: '/editor' },
+      { icon: FileText, label: '我的草稿', href: '/content' },
       { icon: Send, label: '一键分发', href: '/distribute' },
     ],
   },

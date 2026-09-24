@@ -37,118 +37,158 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
 } from 'recharts';
 import { ChartConfig } from '@/components/ui/chart';
 import { PLATFORM_CONFIG, type PlatformType } from '@/types';
-
-// Mock 数据
-const trendData = Array.from({ length: 7 }, (_, i) => {
-  const date = new Date();
-  date.setDate(date.getDate() - (6 - i));
-  return {
-    date: `${date.getMonth() + 1}/${date.getDate()}`,
-    阅读量: Math.floor(Math.random() * 50000) + 20000,
-    互动量: Math.floor(Math.random() * 5000) + 1000,
-  };
-});
-
-const platformData = [
-  { platform: '公众号', value: 45000, color: '#07C160' },
-  { platform: '小红书', value: 32000, color: '#FF2442' },
-  { platform: '抖音', value: 28000, color: '#000000' },
-  { platform: '知乎', value: 15000, color: '#0066FF' },
-  { platform: '微博', value: 12000, color: '#E6162D' },
-];
-
-const topContents = [
-  {
-    id: '1',
-    title: '2024年最值得关注的10个AI工具，效率提升200%',
-    platform: 'wechat' as PlatformType,
-    views: 35680,
-    likes: 2156,
-    comments: 186,
-    date: '2024-01-15',
-    status: 'success',
-  },
-  {
-    id: '2',
-    title: '打工人必备！5个免费又好用的效率神器',
-    platform: 'xiaohongshu' as PlatformType,
-    views: 28940,
-    likes: 3421,
-    comments: 256,
-    date: '2024-01-14',
-    status: 'success',
-  },
-  {
-    id: '3',
-    title: '我用AI一年赚了10万，分享我的经验和方法',
-    platform: 'zhihu' as PlatformType,
-    views: 22150,
-    likes: 1876,
-    comments: 312,
-    date: '2024-01-13',
-    status: 'success',
-  },
-  {
-    id: '4',
-    title: '一分钟学会ChatGPT高级用法，告别无效提问',
-    platform: 'douyin' as PlatformType,
-    views: 58200,
-    likes: 8942,
-    comments: 546,
-    date: '2024-01-12',
-    status: 'success',
-  },
-];
-
-const recentPublish = [
-  { id: '1', title: '今日科技热点速览', platform: 'wechat' as PlatformType, status: 'success', time: '10:30' },
-  { id: '2', title: '好物分享｜这5件东西太值了', platform: 'xiaohongshu' as PlatformType, status: 'success', time: '09:15' },
-  { id: '3', title: '深度解读：AI时代的职场生存法则', platform: 'zhihu' as PlatformType, status: 'publishing', time: '正在发布' },
-  { id: '4', title: '周末vlog｜程序员的一天', platform: 'douyin' as PlatformType, status: 'pending', time: '18:00' },
-];
-
-const stats = [
-  { label: '总阅读量', value: '256,789', change: '+12.5%', up: true, icon: Eye, color: 'text-blue-500' },
-  { label: '总点赞数', value: '18,452', change: '+8.3%', up: true, icon: Heart, color: 'text-red-500' },
-  { label: '评论数', value: '2,876', change: '+15.2%', up: true, icon: MessageCircle, color: 'text-amber-500' },
-  { label: '分享数', value: '4,128', change: '-2.1%', up: false, icon: Share2, color: 'text-emerald-500' },
-  { label: '粉丝总数', value: '305,300', change: '+3.6%', up: true, icon: Users, color: 'text-purple-500' },
-];
+import { dashboardApi, type OverviewData, type TrendPoint, type PlatformDistributionItem, type TopContentItem, type PublishQueueItem } from '@/lib/api/dashboard';
+import { useAuth } from '@/lib/auth/AuthProvider';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 const chartConfig = {
-  阅读量: {
-    label: '阅读量',
-    color: 'hsl(239, 84%, 67%)',
-  },
-  互动量: {
-    label: '互动量',
-    color: 'hsl(160, 84%, 39%)',
-  },
+  阅读量: { label: '阅读量', color: 'hsl(239, 84%, 67%)' },
+  互动量: { label: '互动量', color: 'hsl(160, 84%, 39%)' },
 } satisfies ChartConfig;
 
+function formatNumber(n: number): string {
+  if (n >= 10000) return `${(n / 10000).toFixed(1)}w`;
+  return n.toLocaleString();
+}
+
+function formatDate(s: string): string {
+  if (!s) return '';
+  try {
+    const d = new Date(s);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  } catch {
+    return s;
+  }
+}
+
+function formatStatus(s: string): { label: string; cls: string } {
+  switch (s) {
+    case 'success':
+      return { label: '已发布', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' };
+    case 'publishing':
+      return { label: '发布中', cls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400' };
+    case 'failed':
+      return { label: '失败', cls: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400' };
+    case 'canceled':
+      return { label: '已取消', cls: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400' };
+    default:
+      return { label: '待发布', cls: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400' };
+  }
+}
+
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState('7d');
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState<OverviewData | null>(null);
+  const [trend, setTrend] = useState<TrendPoint[]>([]);
+  const [distribution, setDistribution] = useState<PlatformDistributionItem[]>([]);
+  const [topContents, setTopContents] = useState<TopContentItem[]>([]);
+  const [queue, setQueue] = useState<PublishQueueItem[]>([]);
+
+  const days = timeRange === 'today' ? 1 : timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!user?.currentTeamId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    Promise.all([
+      dashboardApi.overview({ days }),
+      dashboardApi.trend({ days }),
+      dashboardApi.distribution({ days }),
+      dashboardApi.topContents(10),
+      dashboardApi.publishQueue(20),
+    ])
+      .then(([ov, tr, di, tc, q]) => {
+        setOverview(ov);
+        setTrend(tr.points || []);
+        setDistribution(di.items || []);
+        setTopContents(tc.items || []);
+        setQueue(q.items || []);
+      })
+      .catch((err) => {
+        toast.error('加载看板数据失败：' + (err as Error).message);
+      })
+      .finally(() => setLoading(false));
+  }, [user?.currentTeamId, days]);
 
-  if (!mounted) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-pulse text-zinc-400">加载中...</div>
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-72" />
       </div>
     );
   }
+
+  const stats = [
+    {
+      label: '总阅读量',
+      value: formatNumber(overview?.totalViews || 0),
+      change: '+12.5%',
+      up: true,
+      icon: Eye,
+      color: 'text-blue-500',
+    },
+    {
+      label: '总点赞数',
+      value: formatNumber(overview?.totalLikes || 0),
+      change: '+8.3%',
+      up: true,
+      icon: Heart,
+      color: 'text-red-500',
+    },
+    {
+      label: '评论数',
+      value: formatNumber(overview?.totalComments || 0),
+      change: '+15.2%',
+      up: true,
+      icon: MessageCircle,
+      color: 'text-amber-500',
+    },
+    {
+      label: '分享数',
+      value: formatNumber(overview?.totalShares || 0),
+      change: '-2.1%',
+      up: false,
+      icon: Share2,
+      color: 'text-emerald-500',
+    },
+    {
+      label: '粉丝总数',
+      value: formatNumber(overview?.totalFollowers || 0),
+      change: `+${overview?.followerGrowth || 0}`,
+      up: (overview?.followerGrowth || 0) >= 0,
+      icon: Users,
+      color: 'text-purple-500',
+    },
+  ];
+
+  const trendData = trend.map((p) => ({
+    date: formatDate(p.date),
+    阅读量: p.views,
+    互动量: p.likes + p.comments,
+  }));
+
+  const platformData = distribution.map((d) => ({
+    platform: d.platformName,
+    value: d.views,
+    color: PLATFORM_CONFIG[d.platform as PlatformType]?.color || '#94a3b8',
+  }));
 
   return (
     <div className="space-y-6">
@@ -165,10 +205,9 @@ export default function DashboardPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">全部平台</SelectItem>
-              <SelectItem value="wechat">公众号</SelectItem>
-              <SelectItem value="xiaohongshu">小红书</SelectItem>
-              <SelectItem value="douyin">抖音</SelectItem>
-              <SelectItem value="zhihu">知乎</SelectItem>
+              {Object.entries(PLATFORM_CONFIG).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select defaultValue="7d" onValueChange={setTimeRange}>
@@ -204,11 +243,7 @@ export default function DashboardPage() {
                       stat.up ? 'text-emerald-500' : 'text-red-500'
                     }`}
                   >
-                    {stat.up ? (
-                      <TrendingUp className="w-3 h-3" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3" />
-                    )}
+                    {stat.up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                     {stat.change}
                   </div>
                 </div>
@@ -226,7 +261,6 @@ export default function DashboardPage() {
 
       {/* 图表区域 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 趋势图 */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -245,50 +279,43 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorEngage" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" vertical={false} />
-                  <XAxis dataKey="date" stroke="#A1A1AA" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#A1A1AA" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #E4E4E7',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="阅读量"
-                    stroke="#6366F1"
-                    strokeWidth={2}
-                    fill="url(#colorViews)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="互动量"
-                    stroke="#10B981"
-                    strokeWidth={2}
-                    fill="url(#colorEngage)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {trendData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-zinc-400">
+                  暂无数据
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={trendData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366F1" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorEngage" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" vertical={false} />
+                    <XAxis dataKey="date" stroke="#A1A1AA" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#A1A1AA" fontSize={12} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E4E4E7',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      }}
+                    />
+                    <Area type="monotone" dataKey="阅读量" stroke="#6366F1" strokeWidth={2} fill="url(#colorViews)" />
+                    <Area type="monotone" dataKey="互动量" stroke="#10B981" strokeWidth={2} fill="url(#colorEngage)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* 平台分布 */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold">平台分布</CardTitle>
@@ -296,33 +323,28 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={platformData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={70}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {platformData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {platformData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-sm text-zinc-400">
+                  暂无数据
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={platformData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2} dataKey="value">
+                      {platformData.map((entry, i) => (
+                        <Cell key={`cell-${i}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </div>
             <div className="space-y-2 mt-2">
               {platformData.map((item) => (
                 <div key={item.platform} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <span
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                     <span className="text-zinc-600 dark:text-zinc-400">{item.platform}</span>
                   </div>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -337,7 +359,6 @@ export default function DashboardPage() {
 
       {/* 内容排行 & 发布队列 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 热门内容 */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-semibold">内容排行</CardTitle>
@@ -351,58 +372,45 @@ export default function DashboardPage() {
               <TabsList className="mb-3">
                 <TabsTrigger value="views">按阅读量</TabsTrigger>
                 <TabsTrigger value="likes">按点赞数</TabsTrigger>
-                <TabsTrigger value="comments">按评论数</TabsTrigger>
               </TabsList>
               <TabsContent value="views" className="mt-0">
                 <div className="space-y-3">
-                  {topContents.map((content, index) => (
-                    <div
-                      key={content.id}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                          index === 0
-                            ? 'bg-amber-500'
-                            : index === 1
-                            ? 'bg-zinc-400'
-                            : index === 2
-                            ? 'bg-amber-700'
-                            : 'bg-zinc-300 text-zinc-600'
-                        }`}
-                      >
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                          {content.title}
+                  {topContents.length === 0 ? (
+                    <div className="text-sm text-zinc-400 text-center py-8">暂无已发布内容</div>
+                  ) : (
+                    topContents.map((content, index) => (
+                      <div key={content.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                          index === 0 ? 'bg-amber-500' : index === 1 ? 'bg-zinc-400' : index === 2 ? 'bg-amber-700' : 'bg-zinc-300 text-zinc-600'
+                        }`}>
+                          {index + 1}
                         </div>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500">
-                          <Badge
-                            variant="outline"
-                            className="h-5 text-[10px] px-1.5 font-normal"
-                            style={{ borderColor: PLATFORM_CONFIG[content.platform].color, color: PLATFORM_CONFIG[content.platform].color }}
-                          >
-                            {PLATFORM_CONFIG[content.platform].name}
-                          </Badge>
-                          <span>{content.date}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                            {content.title || '未命名'}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500">
+                            <Badge variant="outline" className="h-5 text-[10px] px-1.5 font-normal" style={{ borderColor: PLATFORM_CONFIG[content.platform as PlatformType]?.color, color: PLATFORM_CONFIG[content.platform as PlatformType]?.color }}>
+                              {PLATFORM_CONFIG[content.platform as PlatformType]?.name || content.platform}
+                            </Badge>
+                            <span>{content.publishedAt ? formatDate(content.publishedAt) : ''}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                            {content.views.toLocaleString()}
+                          </div>
+                          <div className="text-xs text-zinc-500">阅读</div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                          {content.views.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-zinc-500">阅读</div>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
 
-        {/* 发布队列 */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-semibold">发布队列</CardTitle>
@@ -413,36 +421,31 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentPublish.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: PLATFORM_CONFIG[item.platform].color }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                      {item.title}
+              {queue.length === 0 ? (
+                <div className="text-sm text-zinc-400 text-center py-8">暂无发布任务</div>
+              ) : (
+                queue.map((item) => {
+                  const st = formatStatus(item.status);
+                  return (
+                    <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: PLATFORM_CONFIG[item.platform as PlatformType]?.color || '#94a3b8' }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                          {item.title || '未命名'}
+                        </div>
+                        <div className="text-xs text-zinc-500 flex items-center gap-2">
+                          <span>{PLATFORM_CONFIG[item.platform as PlatformType]?.name || item.platform}</span>
+                          <span>·</span>
+                          <span>{item.publishedAt ? formatDate(item.publishedAt) : item.scheduledAt ? `定时 ${formatDate(item.scheduledAt)}` : '排队中'}</span>
+                        </div>
+                      </div>
+                      <Badge className={`text-[10px] h-5 font-normal ${st.cls}`} variant="secondary">
+                        {st.label}
+                      </Badge>
                     </div>
-                    <div className="text-xs text-zinc-500 flex items-center gap-2">
-                      <span>{PLATFORM_CONFIG[item.platform].name}</span>
-                      <span>·</span>
-                      <span>{item.time}</span>
-                    </div>
-                  </div>
-                  <Badge
-                    className={`text-[10px] h-5 font-normal ${
-                      item.status === 'success'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-                        : item.status === 'publishing'
-                        ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400'
-                        : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                    }`}
-                    variant="secondary"
-                  >
-                    {item.status === 'success' ? '已发布' : item.status === 'publishing' ? '发布中' : '待发布'}
-                  </Badge>
-                </div>
-              ))}
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>

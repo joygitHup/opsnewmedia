@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { AppSidebar } from '@/components/layout/app-sidebar';
-import { TopBar } from '@/components/layout/top-bar';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
+import { AuthProvider } from '@/lib/auth/AuthProvider';
+import { AppShell } from '@/components/layout/app-shell';
 
 export const metadata: Metadata = {
   title: {
@@ -30,13 +29,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="antialiased">
-        <SidebarProvider defaultOpen={true}>
-          <AppSidebar />
-          <SidebarInset>
-            <TopBar />
-            <main className="flex-1 p-6">{children}</main>
-          </SidebarInset>
-        </SidebarProvider>
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

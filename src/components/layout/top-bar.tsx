@@ -1,11 +1,15 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   Bell,
   Search,
   ChevronDown,
   Plus,
   LayoutGrid,
+  LogOut,
+  User as UserIcon,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,103 +37,106 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
-import { PLATFORM_CONFIG, type Account } from '@/types';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-// Mock 数据
-const mockAccounts: Account[] = [
-  {
-    id: '1',
-    platform: 'wechat',
-    name: '科技前沿观察',
-    status: 'active',
-    followers: 125600,
-    group: '科技矩阵',
-    bindTime: '2024-01-15',
-  },
-  {
-    id: '2',
-    platform: 'xiaohongshu',
-    name: '科技好物分享',
-    status: 'active',
-    followers: 58200,
-    group: '科技矩阵',
-    bindTime: '2024-02-20',
-  },
-  {
-    id: '3',
-    platform: 'wechat',
-    name: '职场成长笔记',
-    status: 'active',
-    followers: 89400,
-    group: '职场矩阵',
-    bindTime: '2024-03-10',
-  },
-  {
-    id: '4',
-    platform: 'xiaohongshu',
-    name: '生活研究所',
-    status: 'expired',
-    followers: 32100,
-    group: '生活矩阵',
-    bindTime: '2024-04-05',
-  },
-];
+import { useAuth } from '@/lib/auth/AuthProvider';
+import { teamsApi, type Team } from '@/lib/api/teams';
+import { accountsApi, type Account } from '@/lib/api/accounts';
+import { PLATFORM_CONFIG } from '@/types';
+import { toast } from 'sonner';
 
 export function TopBar() {
+  const { user, logout, refresh } = useAuth();
+  const router = useRouter();
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const currentAccount = mockAccounts[0];
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  useEffect(() => {
+    // 加载团队 + 当前团队
+    Promise.all([teamsApi.list({ pageSize: 50 }), teamsApi.current()])
+      .then(([res, current]) => {
+        setTeams(res.list);
+        setCurrentTeam(current);
+      })
+      .catch((err) => {
+        // 静默
+        console.warn('load teams failed', err);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!currentTeam) return;
+    accountsApi
+      .list({ teamId: currentTeam.id, pageSize: 50 })
+      .then((res) => setAccounts(res.list))
+      .catch(() => setAccounts([]));
+  }, [currentTeam]);
+
+  const handleSwitchTeam = async (team: Team) => {
+    try {
+      await teamsApi.switchCurrent(team.id);
+      setCurrentTeam(team);
+      // 触发 user 刷新（currentTeamId 已变）
+      await refresh();
+      toast.success('已切换团队');
+    } catch (err) {
+      toast.error((err as Error).message || '切换失败');
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const initial = user?.displayName?.slice(0, 1) || user?.email?.[0] || 'U';
 
   return (
     <header className="h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-between px-4 sticky top-0 z-30">
       <div className="flex items-center gap-4">
-        {/* 账号切换器 */}
+        {/* 团队切换器 */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               className="gap-2 h-9 font-normal hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: PLATFORM_CONFIG[currentAccount.platform].color }}
-              />
-              <span className="text-sm font-medium">{currentAccount.name}</span>
+              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+              <span className="text-sm font-medium">
+                {currentTeam?.name || '未选择团队'}
+              </span>
               <ChevronDown className="w-4 h-4 text-zinc-400" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
-            <DropdownMenuLabel>切换账号</DropdownMenuLabel>
+            <DropdownMenuLabel>切换团队</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {mockAccounts.map((account) => (
-              <DropdownMenuItem key={account.id} className="gap-3 cursor-pointer py-2.5">
-                <div
-                  className="w-8 h-8 rounded-md flex items-center justify-center text-white text-xs font-medium"
-                  style={{ backgroundColor: PLATFORM_CONFIG[account.platform].color }}
-                >
-                  {account.name.slice(0, 2)}
-                </div>
+            {teams.map((team) => (
+              <DropdownMenuItem
+                key={team.id}
+                className="gap-3 cursor-pointer py-2.5"
+                onClick={() => handleSwitchTeam(team)}
+              >
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{account.name}</div>
-                  <div className="text-xs text-zinc-500 flex items-center gap-2">
-                    <span>{PLATFORM_CONFIG[account.platform].name}</span>
-                    <span>·</span>
-                    <span>
-                      {account.status === 'active' ? (
-                        <span className="text-emerald-500">已授权</span>
-                      ) : (
-                        <span className="text-amber-500">已过期</span>
-                      )}
-                    </span>
+                  <div className="text-sm font-medium truncate">
+                    {team.name}
+                  </div>
+                  <div className="text-xs text-zinc-500">
+                    {team.memberCount} 位成员 · {team.role || '成员'}
                   </div>
                 </div>
+                {currentTeam?.id === team.id && (
+                  <Badge variant="outline" className="text-emerald-600">
+                    当前
+                  </Badge>
+                )}
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/accounts" className="text-indigo-600">
-                管理全部账号
+              <Link href="/team" className="text-indigo-600">
+                管理团队
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -166,20 +173,44 @@ export function TopBar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 h-9 px-2">
               <Avatar className="w-7 h-7">
+                {user?.avatar ? <AvatarImage src={user.avatar} /> : null}
                 <AvatarFallback className="bg-indigo-500 text-white text-xs">
-                  管
+                  {initial.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              <span className="text-sm hidden sm:block">
+                {user?.displayName || user?.email}
+              </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>我的账号</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              <div className="flex flex-col">
+                <span>{user?.displayName || '用户'}</span>
+                <span className="text-xs text-zinc-500 font-normal">
+                  {user?.email}
+                </span>
+              </div>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>个人设置</DropdownMenuItem>
-            <DropdownMenuItem>团队设置</DropdownMenuItem>
-            <DropdownMenuItem>计费方案</DropdownMenuItem>
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/team" className="flex items-center gap-2">
+                <UserIcon className="w-4 h-4" />
+                个人设置
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              团队设置
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-500">退出登录</DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-500 cursor-pointer flex items-center gap-2"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4" />
+              退出登录
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -206,7 +237,7 @@ export function TopBar() {
                   className="h-24 flex flex-col gap-2 hover:border-indigo-300 hover:bg-indigo-50/50"
                   onClick={() => {
                     setShowNewDialog(false);
-                    window.location.href = '/editor';
+                    router.push('/editor');
                   }}
                 >
                   <LayoutGrid className="w-6 h-6 text-indigo-500" />
@@ -245,3 +276,6 @@ export function TopBar() {
     </header>
   );
 }
+
+// 兼容旧代码引用 PLATFORM_CONFIG
+void PLATFORM_CONFIG;

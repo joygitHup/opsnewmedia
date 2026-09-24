@@ -1,0 +1,122 @@
+# docker-compose.yml
+# 仅作为参考用，用户自备 PostgreSQL / Redis / RabbitMQ / MinIO 容器。
+# 若未运行过，可用此文件启动基础服务；若已运行，直接在已运行的容器内新建库即可。
+#
+# 后端通过 python manage.py migrate 建表，无需依赖此 compose。
+# 数据库名见 .env: DATABASE_URL
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: opsnewmedia-postgres
+    environment:
+      POSTGRES_USER: opsnewmedia
+      POSTGRES_PASSWORD: opsnewmedia
+      POSTGRES_DB: opsnewmedia
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: opsnewmedia-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: opsnewmedia-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # 管理控制台
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-13T22-19-12Z
+    container_name: opsnewmedia-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # 控制台
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  # 后端（可选：本地开发可直接 python manage.py runserver）
+  backend:
+    build:
+      context: .
+    container_name: opsnewmedia-backend
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - minio
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      ENV: dev
+      SECRET_KEY: dev-only-not-for-prod-please-replace
+      DATABASE_URL: postgres://opsnewmedia:opsnewmedia@postgres:5432/opsnewmedia
+      REDIS_URL: redis://redis:6379/0
+      REDIS_CACHE_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_SECURE: "False"
+      MINIO_BUCKET: opsnewmedia
+      CORS_ALLOWED_ORIGINS: http://localhost:5000
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  celery-worker:
+    build:
+      context: .
+    container_name: opsnewmedia-celery-worker
+    depends_on:
+      - backend
+      - rabbitmq
+      - redis
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      ENV: dev
+      SECRET_KEY: dev-only-not-for-prod-please-replace
+      DATABASE_URL: postgres://opsnewmedia:opsnewmedia@postgres:5432/opsnewmedia
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    command: celery -A config worker -l INFO
+
+  celery-beat:
+    build:
+      context: .
+    container_name: opsnewmedia-celery-beat
+    depends_on:
+      - celery-worker
+      - rabbitmq
+      - redis
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      ENV: dev
+      SECRET_KEY: dev-only-not-for-prod-please-replace
+      DATABASE_URL: postgres://opsnewmedia:opsnewmedia@postgres:5432/opsnewmedia
+      CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    command: celery -A config beat -l INFO
+
+volumes:
+  postgres_data:
+  minio_data:

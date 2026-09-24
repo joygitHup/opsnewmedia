@@ -135,3 +135,166 @@
 body {
   @apply font-sans;
 }
+
+/* ---- 自研 Markdown 编辑器排版（.md-preview 为渲染区） ---- */
+.md-preview {
+  font-size: 0.9375rem;
+  line-height: 1.85;
+  color: rgb(39 39 42); /* zinc-800 */
+  word-break: break-word;
+}
+.dark .md-preview {
+  color: rgb(228 228 231); /* zinc-200 */
+}
+.md-preview > *:first-child {
+  margin-top: 0;
+}
+.md-preview > *:last-child {
+  margin-bottom: 0;
+}
+.md-preview .md-h {
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.4em 0 0.6em;
+}
+.md-preview .md-h1 {
+  font-size: 1.7rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgb(228 228 231);
+}
+.md-preview .md-h2 {
+  font-size: 1.35rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgb(228 228 231);
+}
+.md-preview .md-h3 { font-size: 1.15rem; }
+.md-preview .md-h4,
+.md-preview .md-h5,
+.md-preview .md-h6 { font-size: 1rem; }
+.dark .md-preview .md-h1,
+.dark .md-preview .md-h2 {
+  border-bottom-color: rgb(63 63 70);
+}
+.md-preview .md-p {
+  margin: 0.7em 0;
+}
+.md-preview a {
+  color: rgb(79 70 229); /* indigo-600 */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md-preview strong { font-weight: 700; }
+.md-preview .md-inline-code {
+  padding: 0.15em 0.4em;
+  margin: 0 0.1em;
+  font-size: 0.85em;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  background: rgb(244 244 245);
+  border: 1px solid rgb(228 228 231);
+  border-radius: 0.3rem;
+}
+.dark .md-preview .md-inline-code {
+  background: rgb(39 39 42);
+  border-color: rgb(63 63 70);
+}
+.md-preview .md-pre {
+  position: relative;
+  margin: 0.9em 0;
+  padding: 1em 1.1em;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  background: rgb(24 24 27);
+  color: rgb(228 228 231);
+  border-radius: 0.5rem;
+}
+.md-preview .md-pre code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+.md-preview .md-code-lang {
+  position: absolute;
+  top: 0.4em;
+  right: 0.8em;
+  font-size: 0.65rem;
+  color: rgb(161 161 170);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.md-preview .md-quote {
+  margin: 0.9em 0;
+  padding: 0.4em 1em;
+  border-left: 3px solid rgb(165 180 252); /* indigo-300 */
+  background: rgb(244 244 245);
+  color: rgb(82 82 91);
+  border-radius: 0 0.4rem 0.4rem 0;
+}
+.dark .md-preview .md-quote {
+  background: rgb(39 39 42);
+  color: rgb(161 161 170);
+}
+.md-preview .md-list {
+  margin: 0.7em 0;
+  padding-left: 1.5em;
+  list-style: revert;
+}
+.md-preview .md-list li {
+  margin: 0.3em 0;
+}
+.md-preview .md-task-list {
+  list-style: none;
+  padding-left: 0.5em;
+}
+.md-preview .md-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+.md-preview .md-task input[type='checkbox'] {
+  margin-top: 0.4em;
+  accent-color: rgb(79 70 229);
+}
+.md-preview .md-task-done {
+  color: rgb(161 161 170);
+  text-decoration: line-through;
+}
+.md-preview .md-img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  margin: 0.6em 0;
+}
+.md-preview .md-hr {
+  margin: 1.6em 0;
+  border: 0;
+  border-top: 1px solid rgb(228 228 231);
+}
+.dark .md-preview .md-hr {
+  border-top-color: rgb(63 63 70);
+}
+.md-preview .md-table-wrap {
+  margin: 0.9em 0;
+  overflow-x: auto;
+}
+.md-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.md-preview th,
+.md-preview td {
+  border: 1px solid rgb(228 228 231);
+  padding: 0.45em 0.8em;
+}
+.dark .md-preview th,
+.dark .md-preview td {
+  border-color: rgb(63 63 70);
+}
+.md-preview th {
+  background: rgb(250 250 250);
+  font-weight: 600;
+}
+.dark .md-preview th {
+  background: rgb(39 39 42);
+}

@@ -1,20 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Users,
   UserPlus,
   Shield,
-  MoreHorizontal,
-  Search,
-  Mail,
   Trash2,
-  Edit2,
   Crown,
   Settings,
   Eye,
   FileEdit,
   CheckSquare,
+  Loader2,
+  Copy,
+  CheckCircle2,
+  Pencil,
+  ShieldCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -26,17 +27,8 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -46,440 +38,698 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { teamsApi, type Team, type TeamMember, type RoleMatrix } from '@/lib/api/teams';
+import { useAuth } from '@/lib/auth/AuthProvider';
 import { toast } from 'sonner';
 
-type RoleType = 'admin' | 'editor' | 'reviewer' | 'viewer';
-
-interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  role: RoleType;
-  status: 'active' | 'pending' | 'disabled';
-  joinDate: string;
-  lastActive: string;
-}
-
-const roleConfig: Record<RoleType, { label: string; color: string; icon: LucideIcon; desc: string }> = {
-  admin: { label: '管理员', color: 'text-purple-600 bg-purple-100 dark:text-purple-400 dark:bg-purple-950/50', icon: Crown, desc: '全部权限' },
-  editor: { label: '编辑', color: 'text-indigo-600 bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-950/50', icon: FileEdit, desc: '内容创作与发布' },
-  reviewer: { label: '审核员', color: 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-950/50', icon: CheckSquare, desc: '内容审核' },
-  viewer: { label: '只读', color: 'text-zinc-600 bg-zinc-100 dark:text-zinc-400 dark:bg-zinc-800', icon: Eye, desc: '仅查看' },
+const ROLE_INFO: Record<string, { label: string; icon: LucideIcon; color: string }> = {
+  admin: { label: '管理员', icon: Crown, color: 'text-amber-500' },
+  editor: { label: '编辑', icon: FileEdit, color: 'text-blue-500' },
+  reviewer: { label: '审核员', icon: CheckSquare, color: 'text-purple-500' },
+  viewer: { label: '只读', icon: Eye, color: 'text-zinc-500' },
 };
 
-const mockMembers: TeamMember[] = [
-  {
-    id: '1',
-    name: '张小明',
-    email: 'zhangxm@example.com',
-    role: 'admin',
-    status: 'active',
-    joinDate: '2023-06-15',
-    lastActive: '刚刚',
-  },
-  {
-    id: '2',
-    name: '李编辑',
-    email: 'libianji@example.com',
-    role: 'editor',
-    status: 'active',
-    joinDate: '2023-08-20',
-    lastActive: '10分钟前',
-  },
-  {
-    id: '3',
-    name: '王审核',
-    email: 'wangshenhe@example.com',
-    role: 'reviewer',
-    status: 'active',
-    joinDate: '2023-09-10',
-    lastActive: '1小时前',
-  },
-  {
-    id: '4',
-    name: '赵运营',
-    email: 'zhaoyunying@example.com',
-    role: 'editor',
-    status: 'active',
-    joinDate: '2023-10-01',
-    lastActive: '2小时前',
-  },
-  {
-    id: '5',
-    name: '陈数据',
-    email: 'chenshuju@example.com',
-    role: 'viewer',
-    status: 'active',
-    joinDate: '2023-11-15',
-    lastActive: '昨天',
-  },
-  {
-    id: '6',
-    name: '孙设计',
-    email: 'sunshiji@example.com',
-    role: 'editor',
-    status: 'pending',
-    joinDate: '2024-01-10',
-    lastActive: '未激活',
-  },
-];
-
-const permissions = [
-  { category: '账号管理', items: [
-    { name: '添加账号', admin: true, editor: false, reviewer: false, viewer: false },
-    { name: '删除账号', admin: true, editor: false, reviewer: false, viewer: false },
-    { name: '查看账号列表', admin: true, editor: true, reviewer: true, viewer: true },
-  ]},
-  { category: '内容管理', items: [
-    { name: '创建内容', admin: true, editor: true, reviewer: false, viewer: false },
-    { name: '编辑内容', admin: true, editor: true, reviewer: false, viewer: false },
-    { name: '删除内容', admin: true, editor: true, reviewer: false, viewer: false },
-    { name: '提交审核', admin: true, editor: true, reviewer: false, viewer: false },
-  ]},
-  { category: '发布管理', items: [
-    { name: '发布内容', admin: true, editor: true, reviewer: false, viewer: false },
-    { name: '定时发布', admin: true, editor: true, reviewer: false, viewer: false },
-    { name: '撤回发布', admin: true, editor: true, reviewer: false, viewer: false },
-  ]},
-  { category: '审核管理', items: [
-    { name: '审核内容', admin: true, editor: false, reviewer: true, viewer: false },
-    { name: '查看审核记录', admin: true, editor: true, reviewer: true, viewer: true },
-  ]},
-  { category: '数据统计', items: [
-    { name: '查看数据看板', admin: true, editor: true, reviewer: true, viewer: true },
-    { name: '导出报表', admin: true, editor: false, reviewer: false, viewer: false },
-  ]},
-];
-
 export default function TeamPage() {
-  const [activeTab, setActiveTab] = useState('members');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const { user, refresh } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [roleMatrix, setRoleMatrix] = useState<RoleMatrix | null>(null);
+  const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<RoleType>('editor');
+  const [inviteRole, setInviteRole] = useState('viewer');
+  const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ link: string; email: string } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [editName, setEditName] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState<Team | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const filteredMembers = mockMembers.filter((m) => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+  const fetchAll = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
     }
-    return true;
-  });
+    setLoading(true);
+    try {
+      const [listRes, current] = await Promise.all([
+        teamsApi.list({ pageSize: 50 }),
+        teamsApi.current(),
+      ]);
+      setTeams(listRes.list);
+      setCurrentTeam(current);
+      setMembers(current.members || []);
+      try {
+        const matrix = await teamsApi.roles();
+        setRoleMatrix(matrix);
+      } catch {
+        // 忽略
+      }
+    } catch (err) {
+      toast.error('加载团队失败：' + (err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
-  const handleInvite = () => {
-    if (!inviteEmail) return;
-    toast.success(`已向 ${inviteEmail} 发送邀请`);
-    setShowInviteDialog(false);
-    setInviteEmail('');
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  const handleSwitchTeam = async (team: Team) => {
+    try {
+      await teamsApi.switchCurrent(team.id);
+      await fetchAll();
+      await refresh();
+      toast.success('已切换团队');
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentTeam) return;
+    if (!inviteEmail) {
+      toast.warning('请填写邮箱');
+      return;
+    }
+    setInviting(true);
+    try {
+      const inv = await teamsApi.invite(currentTeam.id, {
+        email: inviteEmail,
+        role: inviteRole,
+      });
+      const link = `${window.location.origin}/invite?token=${inv.token}`;
+      setInviteResult({ link, email: inviteEmail });
+      await fetchAll();
+    } catch (err) {
+      toast.error('邀请失败：' + (err as Error).message);
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleCreateTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTeamName) {
+      toast.warning('请填写团队名');
+      return;
+    }
+    setCreating(true);
+    try {
+      await teamsApi.create({ name: newTeamName });
+      toast.success('团队已创建');
+      setShowCreate(false);
+      setNewTeamName('');
+      await fetchAll();
+    } catch (err) {
+      toast.error('创建失败：' + (err as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!deletingTeam) return;
+    setDeleting(true);
+    try {
+      await teamsApi.remove(deletingTeam.id);
+      toast.success('团队已删除');
+      setDeletingTeam(null);
+      await fetchAll();
+      await refresh();
+    } catch (err) {
+      toast.error('删除失败：' + (err as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeam) return;
+    if (!editName.trim()) {
+      toast.warning('请填写团队名');
+      return;
+    }
+    setRenaming(true);
+    try {
+      await teamsApi.update(editingTeam.id, { name: editName.trim() });
+      toast.success('团队名已更新');
+      setEditingTeam(null);
+      await fetchAll();
+      await refresh();
+    } catch (err) {
+      toast.error('更新失败：' + (err as Error).message);
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleRemoveMember = async (member: TeamMember) => {
+    if (!currentTeam) return;
+    if (member.userId === user?.id) {
+      toast.warning('无法移除自己');
+      return;
+    }
+    if (!confirm(`确认移除成员「${member.name}」？`)) return;
+    try {
+      await teamsApi.removeMember(currentTeam.id, member.id);
+      toast.success('成员已移除');
+      await fetchAll();
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleChangeRole = async (member: TeamMember, role: string) => {
+    if (!currentTeam) return;
+    try {
+      await teamsApi.updateMember(currentTeam.id, member.id, { role });
+      toast.success('角色已更新');
+      await fetchAll();
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">团队协作</h1>
-          <p className="text-sm text-zinc-500 mt-1">管理团队成员、角色权限与协作流程</p>
+          <h1 className="text-2xl font-bold">团队管理</h1>
+          <p className="text-sm text-zinc-500 mt-1">管理团队成员与权限</p>
         </div>
-        <Button
-          onClick={() => setShowInviteDialog(true)}
-          className="gap-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
-        >
-          <UserPlus className="w-4 h-4" />
-          邀请成员
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowCreate(true)}>
+            新建团队
+          </Button>
+          <Button
+            onClick={() => setShowInvite(true)}
+            className="gap-1.5 bg-gradient-to-r from-indigo-500 to-purple-600"
+            disabled={!currentTeam}
+          >
+            <UserPlus className="w-4 h-4" />
+            邀请成员
+          </Button>
+        </div>
       </div>
 
-      {/* 统计卡片 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {Object.entries(roleConfig).map(([key, config]) => {
-          const Icon = config.icon;
-          const count = mockMembers.filter((m) => m.role === key).length;
-          return (
-            <Card key={key}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold">{count}</div>
-                    <div className="text-sm text-zinc-500 mt-0.5">{config.label}</div>
-                  </div>
-                  <div className={`p-2.5 rounded-lg ${config.color}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <Card>
-        <Tabs defaultValue="members" value={activeTab} onValueChange={setActiveTab}>
-          <CardHeader className="pb-0">
-            <TabsList>
-              <TabsTrigger value="members" className="gap-2">
-                <Users className="w-4 h-4" />
-                成员列表
-              </TabsTrigger>
-              <TabsTrigger value="roles" className="gap-2">
-                <Shield className="w-4 h-4" />
-                角色权限
-              </TabsTrigger>
-            </TabsList>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* 左侧团队列表 */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="text-base">我的团队</CardTitle>
+            <CardDescription className="text-xs">点击切换当前团队</CardDescription>
           </CardHeader>
+          <CardContent className="space-y-2">
+            {teams.map((team) => {
+              const isCurrent = currentTeam?.id === team.id;
+              return (
+                <button
+                  key={team.id}
+                  onClick={() => handleSwitchTeam(team)}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    isCurrent
+                      ? 'border-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30'
+                      : 'border-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{team.name}</div>
+                      <div className="text-xs text-zinc-500 mt-0.5">
+                        {team.memberCount} 位成员
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTeam(team);
+                          setEditName(team.name);
+                        }}
+                        className="p-1.5 rounded-md text-zinc-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
+                        title="重命名"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingTeam(team);
+                        }}
+                        className="p-1.5 rounded-md text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                        title="删除团队"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      {isCurrent && (
+                        <Badge variant="outline" className="text-emerald-600">
+                          当前
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+            {teams.length === 0 && (
+              <div className="text-sm text-zinc-400 text-center py-4">尚未加入任何团队</div>
+            )}
+          </CardContent>
+        </Card>
 
-          <CardContent className="pt-4">
-            <TabsContent value="members" className="mt-0">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                <Input
-                  placeholder="搜索成员..."
-                  className="pl-9 h-9"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Select defaultValue="all">
-                <SelectTrigger className="w-32 h-9">
-                  <SelectValue placeholder="全部角色" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部角色</SelectItem>
-                  {Object.entries(roleConfig).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      {config.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 -mx-6 px-6">
-              {filteredMembers.map((member) => {
-                const roleInfo = roleConfig[member.role];
+        {/* 右侧成员列表 */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">
+              成员列表
+              {currentTeam && <span className="ml-2 text-zinc-400">· {currentTeam.name}</span>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {members.length === 0 ? (
+              <div className="text-sm text-zinc-400 text-center py-8">暂无成员</div>
+            ) : (
+              members.map((member) => {
+                const roleInfo = ROLE_INFO[member.role] || ROLE_INFO.viewer;
                 const RoleIcon = roleInfo.icon;
                 return (
-                  <div
-                    key={member.id}
-                    className="flex items-center gap-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 -mx-6 px-6 transition-colors group"
-                  >
-                    <Avatar className="w-10 h-10">
-                      <AvatarFallback className="bg-indigo-500 text-white">
-                        {member.name.slice(0, 2)}
+                  <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                    <Avatar className="w-9 h-9">
+                      <AvatarFallback className="bg-indigo-500 text-white text-xs">
+                        {(member.name || member.email || 'U').slice(0, 1).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                          {member.name}
-                        </span>
-                        {member.status === 'pending' && (
-                          <Badge variant="secondary" className="text-xs font-normal">
-                            待激活
-                          </Badge>
-                        )}
-                        {member.status === 'disabled' && (
-                          <Badge variant="secondary" className="text-xs font-normal text-zinc-500">
-                            已禁用
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-sm text-zinc-500 flex items-center gap-2 mt-0.5">
-                        <Mail className="w-3.5 h-3.5" />
-                        {member.email}
-                      </div>
+                      <div className="text-sm font-medium">{member.name || '未命名'}</div>
+                      <div className="text-xs text-zinc-500 truncate">{member.email}</div>
                     </div>
-
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md ${roleInfo.color}`}>
-                      <RoleIcon className="w-3.5 h-3.5" />
-                      <span className="text-xs font-medium">{roleInfo.label}</span>
+                    <div className={`flex items-center gap-1 text-xs ${roleInfo.color}`}>
+                      <RoleIcon className="w-3 h-3" />
+                      {roleInfo.label}
                     </div>
-
-                    <div className="text-sm text-zinc-500 w-24 text-right">
-                      {member.lastActive}
-                    </div>
-
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuLabel>成员操作</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2 cursor-pointer">
-                            <Edit2 className="w-4 h-4" />
-                            修改角色
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 cursor-pointer">
-                            <Settings className="w-4 h-4" />
-                            账号设置
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2 cursor-pointer text-red-500">
-                            <Trash2 className="w-4 h-4" />
-                            移除成员
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <Select
+                      defaultValue={member.role}
+                      onValueChange={(v) => handleChangeRole(member, v)}
+                    >
+                      <SelectTrigger className="w-24 h-7 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ROLE_INFO).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {member.userId !== user?.id && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-red-500"
+                        onClick={() => handleRemoveMember(member)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                   </div>
                 );
-              })}
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 角色权限矩阵 */}
+      {roleMatrix && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheck className="w-4 h-4 text-indigo-500" />
+              角色权限矩阵
+            </CardTitle>
+            <CardDescription className="text-xs">各角色可访问的资源与操作权限</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 pr-4 font-medium text-zinc-500">资源</th>
+                    {roleMatrix.roles.map((r) => (
+                      <th key={r.value} className="text-center py-3 px-2 font-medium">
+                        {r.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {roleMatrix.resources.map((res) => {
+                    const resPerms: Record<string, string[] | string> = {};
+                    for (const role of roleMatrix.roles) {
+                      const rolePerms = roleMatrix.permissions[role.value];
+                      resPerms[role.value] = rolePerms?.[res.value] ?? rolePerms?.['*'] ?? [];
+                    }
+                    return (
+                      <tr key={res.value} className="border-b last:border-0">
+                        <td className="py-3 pr-4 font-medium">{res.label}</td>
+                        {roleMatrix.roles.map((r) => {
+                          const actions = resPerms[r.value];
+                          const isAll = actions === '*' || (Array.isArray(actions) && actions.includes('*'));
+                          if (isAll) {
+                            return (
+                              <td key={r.value} className="text-center py-3 px-2">
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 dark:border-emerald-800">全部权限</Badge>
+                              </td>
+                            );
+                          }
+                          if (!actions || (Array.isArray(actions) && actions.length === 0)) {
+                            return (
+                              <td key={r.value} className="text-center py-3 px-2">
+                                <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                              </td>
+                            );
+                          }
+                          return (
+                            <td key={r.value} className="text-center py-3 px-2">
+                              <div className="flex flex-wrap gap-1 justify-center">
+                                {(actions as string[]).map((act) => {
+                                  const label = roleMatrix.actionLabels[act] || act;
+                                  const colorMap: Record<string, string> = {
+                                    create: 'bg-blue-500/10 text-blue-600',
+                                    read: 'bg-zinc-500/10 text-zinc-500',
+                                    update: 'bg-amber-500/10 text-amber-600',
+                                    delete: 'bg-red-500/10 text-red-600',
+                                  };
+                                  return (
+                                    <span
+                                      key={act}
+                                      className={`inline-block px-1.5 py-0.5 rounded text-xs ${colorMap[act] || 'bg-zinc-500/10 text-zinc-500'}`}
+                                    >
+                                      {label}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </TabsContent>
+            <div className="mt-4 flex flex-wrap gap-4 text-xs text-zinc-400">
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-500/30" /> 创建
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-zinc-500/30" /> 查看
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500/30" /> 编辑
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-500/30" /> 删除
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500/30" /> 全部权限
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          <TabsContent value="roles" className="mt-0 space-y-6">
-            {permissions.map((group) => (
-              <div key={group.category}>
-                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-3">
-                  {group.category}
-                </h3>
-                <Card>
-                  <CardContent className="p-0">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                          <th className="text-left text-xs font-medium text-zinc-500 px-4 py-3">
-                            权限项
-                          </th>
-                          {Object.entries(roleConfig).map(([key, config]) => (
-                            <th key={key} className="text-center text-xs font-medium text-zinc-500 px-4 py-3 w-24">
-                              {config.label}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.items.map((item) => (
-                          <tr key={item.name} className="border-b border-zinc-100 dark:border-zinc-800/50 last:border-0">
-                            <td className="text-sm text-zinc-700 dark:text-zinc-300 px-4 py-3">
-                              {item.name}
-                            </td>
-                            <td className="text-center px-4 py-3">
-                              {item.admin ? (
-                                <span className="inline-flex w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 items-center justify-center">
-                                  ✓
-                                </span>
-                              ) : (
-                                <span className="text-zinc-300 dark:text-zinc-700">—</span>
-                              )}
-                            </td>
-                            <td className="text-center px-4 py-3">
-                              {item.editor ? (
-                                <span className="inline-flex w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 items-center justify-center">
-                                  ✓
-                                </span>
-                              ) : (
-                                <span className="text-zinc-300 dark:text-zinc-700">—</span>
-                              )}
-                            </td>
-                            <td className="text-center px-4 py-3">
-                              {item.reviewer ? (
-                                <span className="inline-flex w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 items-center justify-center">
-                                  ✓
-                                </span>
-                              ) : (
-                                <span className="text-zinc-300 dark:text-zinc-700">—</span>
-                              )}
-                            </td>
-                            <td className="text-center px-4 py-3">
-                              {item.viewer ? (
-                                <span className="inline-flex w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 items-center justify-center">
-                                  ✓
-                                </span>
-                              ) : (
-                                <span className="text-zinc-300 dark:text-zinc-700">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
-              </div>
-            ))}
-          </TabsContent>
-        </CardContent>
-        </Tabs>
-      </Card>
-
-      {/* 邀请成员弹窗 */}
-      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+      {/* 邀请弹窗 */}
+      <Dialog
+        open={showInvite}
+        onOpenChange={(v) => {
+          setShowInvite(v);
+          if (!v) {
+            setInviteResult(null);
+            setInviteEmail('');
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>邀请团队成员</DialogTitle>
-            <DialogDescription>
-              输入成员邮箱，邀请其加入团队
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-sm font-medium mb-2 block">邮箱地址</Label>
-              <Input
-                placeholder="请输入邮箱地址"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium mb-2 block">分配角色</Label>
-              <Select defaultValue={inviteRole} onValueChange={(v) => setInviteRole(v as RoleType)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="选择角色" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(roleConfig).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      <div className="flex items-center gap-2">
-                        <config.icon className="w-4 h-4" />
-                        <span>{config.label}</span>
-                        <span className="text-zinc-400 text-xs">- {config.desc}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg">
-              <div className="text-sm font-medium text-indigo-800 dark:text-indigo-400">
-                当前套餐：团队版
+          {inviteResult ? (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <DialogTitle>邀请已发送</DialogTitle>
+                    <DialogDescription className="mt-0.5">
+                      邀请链接已发送到对方邮箱
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900">
+                  <Avatar className="w-9 h-9 shrink-0">
+                    <AvatarFallback className="bg-indigo-500 text-white text-xs">
+                      {inviteResult.email.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{inviteResult.email}</div>
+                    <div className="text-xs text-zinc-500">收到邮件后点击链接即可加入</div>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-zinc-50 dark:bg-zinc-900 border p-3">
+                  <p className="text-xs text-zinc-500 mb-2">或手动复制邀请链接：</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs text-zinc-600 dark:text-zinc-400 truncate">
+                      {inviteResult.link}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteResult.link);
+                        toast.success('链接已复制');
+                      }}
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      复制
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-zinc-400 text-center">
+                  邀请链接 7 天内有效
+                </p>
               </div>
-              <div className="text-xs text-indigo-600 dark:text-indigo-500 mt-0.5">
-                已使用 {mockMembers.length}/5 个成员席位
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
-              取消
-            </Button>
-            <Button
-              onClick={handleInvite}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
-            >
-              <UserPlus className="w-4 h-4 mr-1.5" />
-              发送邀请
-            </Button>
-          </DialogFooter>
+              <DialogFooter>
+                <Button
+                  onClick={() => {
+                    setInviteResult(null);
+                    setInviteEmail('');
+                  }}
+                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                >
+                  继续邀请
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>邀请成员</DialogTitle>
+                <DialogDescription>输入邮箱生成邀请链接</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleInvite} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="invite-email">邮箱</Label>
+                  <Input
+                    id="invite-email"
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder="user@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>角色</Label>
+                  <Select value={inviteRole} onValueChange={setInviteRole}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(ROLE_INFO).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                    disabled={inviting}
+                  >
+                    {inviting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        邀请中...
+                      </>
+                    ) : (
+                      '生成邀请链接'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* 创建团队弹窗 */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>新建团队</DialogTitle>
+            <DialogDescription>创建一个新团队/工作空间</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateTeam} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="team-name">团队名</Label>
+              <Input
+                id="team-name"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                placeholder="如：科技矩阵"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                disabled={creating}
+              >
+                {creating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    创建中...
+                  </>
+                ) : (
+                  '创建'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 重命名团队弹窗 */}
+      <Dialog open={!!editingTeam} onOpenChange={(open) => !open && setEditingTeam(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>重命名团队</DialogTitle>
+            <DialogDescription>修改团队名称</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleRename} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-team-name">团队名</Label>
+              <Input
+                id="edit-team-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="请输入团队名"
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                disabled={renaming}
+              >
+                {renaming ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    保存中...
+                  </>
+                ) : (
+                  '保存'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 删除团队确认 */}
+      <AlertDialog open={!!deletingTeam} onOpenChange={(open) => !open && setDeletingTeam(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除团队</AlertDialogTitle>
+            <AlertDialogDescription>
+              确认删除团队「{deletingTeam?.name}」？删除后不可恢复，团队下的所有内容将一并清除。
+              {deletingTeam?.id === currentTeam?.id && '（不能删除当前所在团队，请先切换到其他团队）'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTeam}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  删除中...
+                </>
+              ) : (
+                '确认删除'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+void Settings;
+void Users;
+void Shield;

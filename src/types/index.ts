@@ -7,6 +7,9 @@ export type PlatformType =
   | 'weibo'
   | 'bilibili';
 
+// 素材类型
+export type MaterialType = 'image' | 'video' | 'audio' | 'document';
+
 export const PLATFORM_CONFIG: Record<
   PlatformType,
   { name: string; color: string; icon: string }
