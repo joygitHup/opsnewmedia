@@ -94,6 +94,8 @@ class Account(TeamScopedModel, TimeStampedModel, SoftDeleteModel):
             models.UniqueConstraint(
                 fields=["team", "platform", "platform_account_id"],
                 name="uniq_team_platform_account",
+                # 软删除记录不参与唯一约束，否则删除后无法重新绑定同平台账号
+                condition=models.Q(is_deleted=False),
             ),
         ]
 

@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   // outputFileTracingRoot: path.resolve(__dirname, '../../'),  // Uncomment and add 'import path from "path"' if needed
   /* config options here */
   serverExternalPackages: ['coze-coding-dev-sdk'],
+  output: 'standalone',
   turbopack: {},
   webpack: (config, { dev }) => {
     if (dev && config.cache && config.cache.type === 'filesystem') {
@@ -28,6 +29,15 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      {
+        // 宣传页干净路径（与 canonical 保持一致，地址栏不显示 index.html）
+        source: '/gaodinintriduce',
+        destination: '/gaodinintriduce/index.html',
+      },
+      {
+        source: '/gaodinintriduce/',
+        destination: '/gaodinintriduce/index.html',
+      },
       {
         // 转发到后端时统一补尾部斜杠，匹配 Django APPEND_SLASH 期望
         source: '/api/v1/:path*',

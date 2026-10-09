@@ -266,10 +266,10 @@ WECHAT_MP_SECRET = env("WECHAT_MP_SECRET", default="")
 XIAOHONGSHU_APP_ID = env("XIAOHONGSHU_APP_ID", default="")
 XIAOHONGSHU_APP_SECRET = env("XIAOHONGSHU_APP_SECRET", default="")
 
-# ---- AI ----
-AI_API_BASE = env("AI_API_BASE", default="https://api.openai.com/v1")
+# ---- AI (千文 AI 平台 — OpenAI 兼容模式) ----
+AI_API_BASE = env("AI_API_BASE", default="https://maas.qianwenaiapi.com/compatible-mode/v1")
 AI_API_KEY = env("AI_API_KEY", default="")
-AI_MODEL = env("AI_MODEL", default="gpt-4o-mini")
+AI_MODEL = env("AI_MODEL", default="qwen-plus")
 
 # ---- 日志 ----
 LOGGING = {

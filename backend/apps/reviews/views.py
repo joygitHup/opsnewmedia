@@ -53,11 +53,13 @@ class SubmitReviewView(APIView):
     @extend_schema(summary="提交审核")
     def post(self, request: Request, draft_id: int) -> Response:
         from apps.content.permissions import CanManageContent
+        from apps.teams.services import check_feature
 
         try:
             draft = ContentDraft.objects.select_related("team").get(id=draft_id)
         except ContentDraft.DoesNotExist:
             raise BusinessError(ErrorCode.NOT_FOUND, "草稿不存在")
+        check_feature(draft.team, "review_flow")
         ser = SubmitReviewSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         flow = services.submit_for_review(

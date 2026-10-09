@@ -243,6 +243,26 @@ def check_plan_limit(team: Team, resource: str, quantity: int = 1) -> None:
         )
 
 
+def check_platform_limit(team: Team, platform: str) -> None:
+    """新建账号时校验平台数上限：仅当该 platform 尚未被团队使用时才计入新名额。"""
+    limits = get_plan_limits(team.plan)
+    limit = limits.get("max_platforms")
+    if limit is None:
+        return  # None = 不限
+    from apps.accounts.models import Account
+    used = set(
+        Account.objects.filter(team=team, is_deleted=False)
+        .values_list("platform", flat=True)
+    ) - {""}
+    if platform in used:
+        return  # 已绑过的平台不重复计数
+    if len(used) + 1 > limit:
+        raise BusinessError(
+            ErrorCode.PLAN_LIMIT_EXCEEDED,
+            f"平台数量已达上限（{limit}），请升级套餐",
+        )
+
+
 def check_feature(team: Team, feature: str) -> None:
     """检查团队是否有指定功能权限。
 

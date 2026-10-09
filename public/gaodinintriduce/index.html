@@ -2,9 +2,37 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
+  <script>document.documentElement.classList.add('js')</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>稿定分发 — 多平台内容分发工具 | 一次创作 全网触达</title>
-  <meta name="description" content="稿定分发：一站式内容创作、管理与多平台分发工具。支持微信公众号、小红书、抖音、知乎、微博、B站同步发布，定时发布、团队协作、审核流程。">
+  <title>多平台内容分发工具_公众号/小红书/抖音/知乎一键同步发布软件 - 稿定分发</title>
+  <meta name="description" content="稿定分发是一站式多平台内容分发工具：Markdown 写作后一键同步发布到微信公众号、小红书、抖音、知乎、微博、B站，支持定时发布、智能素材库、团队协作与审核流程。免费版 ¥0，个人版 ¥39/月，团队版 ¥199/月。">
+  <meta name="keywords" content="多平台内容分发,一键多发,新媒体分发工具,公众号同步发布,小红书抖音一键发布,内容矩阵管理,定时发布,自媒体工具,稿定分发">
+  <meta name="author" content="稿定分发">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <meta name="language" content="zh-CN">
+  <meta name="theme-color" content="#0a0814">
+  <meta name="application-name" content="稿定分发">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="canonical" href="https://www.gaodingfenfa.com/gaodinintriduce/">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%23c084fc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Ctext x='16' y='22' font-size='16' font-family='sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'%3E%E7%A8%BF%3C/text%3E%3C/svg%3E">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="稿定分发">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:url" content="https://www.gaodingfenfa.com/gaodinintriduce/">
+  <meta property="og:title" content="稿定分发 — 一次创作，全网触达的多平台内容分发工具">
+  <meta property="og:description" content="一键同步发布微信公众号、小红书、抖音、知乎、微博、B站。定时发布、素材库、团队协作与审核流程，免费开始。">
+  <meta property="og:image" content="https://www.gaodingfenfa.com/gaodinintriduce/og-cover.jpg">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="720">
+  <meta property="og:image:alt" content="稿定分发：多平台内容分发工具">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="稿定分发 — 多平台内容分发工具">
+  <meta name="twitter:description" content="一次创作，同步发布到微信、小红书、抖音、知乎、微博、B站。免费版 ¥0 起。">
+  <meta name="twitter:image" content="https://www.gaodingfenfa.com/gaodinintriduce/og-cover.jpg">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{
@@ -25,9 +53,9 @@
     a{text-decoration:none;color:inherit}
     svg{display:block}
 
-    /* 滚动动效 */
-    .reveal{opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1)}
-    .reveal.in{opacity:1;transform:none}
+    /* 滚动动效（仅在 JS 可用时隐藏初始态，保证不执行脚本的爬虫能读到完整内容） */
+    .js .reveal{opacity:0;transform:translateY(40px);transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1)}
+    .js .reveal.in{opacity:1;transform:none}
     .reveal-d1{transition-delay:.1s} .reveal-d2{transition-delay:.2s} .reveal-d3{transition-delay:.3s}
 
     /* 导航 */
@@ -174,6 +202,51 @@
 
     footer{border-top:1px solid var(--line);padding:40px 0;text-align:center;color:var(--muted2);font-size:13px}
 
+    /* FAQ */
+    .faq-list{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+    .faq-item{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;transition:border-color .25s,background .25s}
+    .faq-item[open]{border-color:rgba(168,85,247,.35);background:linear-gradient(180deg,var(--glow),var(--surface))}
+    .faq-item summary{list-style:none;cursor:pointer;padding:18px 22px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:16px;outline:none}
+    .faq-item summary::-webkit-details-marker{display:none}
+    .faq-item summary::after{content:'+';font-size:22px;font-weight:400;color:var(--p3);transition:transform .25s;line-height:1;flex-shrink:0}
+    .faq-item[open] summary::after{transform:rotate(45deg)}
+    .faq-a{padding:0 22px 20px;font-size:14px;color:var(--muted);line-height:1.8}
+    .faq-a strong{color:var(--text);font-weight:600}
+
+    /* 支付弹窗 */
+    .modal-mask{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(6,4,14,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0;transition:opacity .25s}
+    .modal-mask.open{display:flex;opacity:1}
+    .modal{width:100%;max-width:420px;background:linear-gradient(180deg,var(--surface2),var(--surface));border:1px solid var(--line2);border-radius:var(--radius-lg);padding:32px 28px 28px;position:relative;box-shadow:0 24px 80px rgba(0,0,0,.55);transform:translateY(16px) scale(.98);transition:transform .28s cubic-bezier(.16,1,.3,1)}
+    .modal-mask.open .modal{transform:none}
+    .modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:9px;border:1px solid var(--line2);background:transparent;color:var(--muted);font-size:17px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+    .modal-close:hover{color:var(--text);border-color:var(--p2)}
+    .pay-title{font-size:19px;font-weight:700;margin-bottom:4px}
+    .pay-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+    .pay-order{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);background:rgba(255,255,255,.02);margin-bottom:22px}
+    .pay-order-name{font-size:14px;font-weight:600}
+    .pay-order-cycle{font-size:12px;color:var(--muted2);margin-top:2px}
+    .pay-order-price{font-size:26px;font-weight:700;color:var(--p3)}
+    .pay-methods{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px}
+    .pay-method{display:flex;align-items:center;gap:10px;padding:13px 14px;border:1px solid var(--line2);border-radius:var(--radius-sm);cursor:pointer;font-size:14px;color:var(--muted);transition:all .2s;background:transparent;font-family:inherit}
+    .pay-method svg{width:20px;height:20px}
+    .pay-method.active{border-color:var(--p2);color:var(--text);background:var(--glow)}
+    .pay-method .m-wechat{color:#07C160} .pay-method .m-alipay{color:#1677FF}
+    .pay-btn{width:100%;padding:13px;border:none;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:transform .2s,box-shadow .2s;font-family:inherit}
+    .pay-btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px var(--glow)}
+    .pay-btn:disabled{opacity:.7;cursor:not-allowed;transform:none;box-shadow:none}
+    .pay-note{text-align:center;font-size:12px;color:var(--muted2);margin-top:14px}
+    .spinner{width:17px;height:17px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;display:inline-block;vertical-align:-3px;margin-right:8px;animation:payspin .7s linear infinite}
+    @keyframes payspin{to{transform:rotate(360deg)}}
+    .pay-state{display:none;text-align:center;padding:10px 0 6px}
+    .pay-state.show{display:block}
+    .pay-state-icon{width:64px;height:64px;border-radius:50%;margin:6px auto 18px;display:flex;align-items:center;justify-content:center}
+    .pay-state-icon svg{width:32px;height:32px;color:#fff}
+    .pay-state-icon.ok{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 36px rgba(16,185,129,.4);animation:popin .4s cubic-bezier(.16,1,.3,1)}
+    @keyframes popin{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+    .pay-state h3{font-size:18px;font-weight:700;margin-bottom:8px}
+    .pay-state p{font-size:13px;color:var(--muted);margin-bottom:24px}
+    body.modal-lock{overflow:hidden}
+
     @media(max-width:900px){
       .features{grid-template-columns:1fr}
       .feature.large{grid-column:span 1;grid-template-columns:1fr}
@@ -242,20 +315,22 @@
 </svg>
 
 <!-- 导航 -->
-<nav class="nav" id="nav">
+<header class="nav" id="nav">
   <div class="nav-inner">
-    <a href="#" class="nav-logo"><span class="nav-logo-dot">稿</span>稿定分发</a>
-    <div class="nav-links" id="navLinks">
+    <a href="/gaodinintriduce/" class="nav-logo" aria-label="稿定分发首页"><span class="nav-logo-dot">稿</span>稿定分发</a>
+    <nav class="nav-links" id="navLinks" aria-label="主导航">
       <a href="#features">功能</a>
       <a href="#platforms">平台</a>
       <a href="#workflow">流程</a>
       <a href="#pricing">定价</a>
-      <a href="/" class="nav-cta">免费开始</a>
-    </div>
-    <button class="burger" id="burger" aria-label="菜单"><span></span><span></span><span></span></button>
+      <a href="#faq">常见问题</a>
+      <a href="/login" class="nav-cta">免费开始</a>
+    </nav>
+    <button class="burger" id="burger" aria-label="菜单" aria-expanded="false"><span></span><span></span><span></span></button>
   </div>
-</nav>
+</header>
 
+<main>
 <!-- Hero -->
 <section class="hero">
   <div class="hero-bg"><div class="hero-orb hero-orb-1"></div><div class="hero-orb hero-orb-2"></div></div>
@@ -416,7 +491,7 @@
           <li><svg><use href="#i-check"/></svg>定时发布</li>
           <li class="disabled"><svg><use href="#i-x"/></svg>审核流程</li>
         </ul>
-        <a href="/login" class="pricing-btn">选择个人版</a>
+        <a href="/login" class="pricing-btn js-checkout" data-plan="personal" data-plan-name="个人版" data-plan-price="39">选择个人版</a>
       </div>
       <div class="pricing-card reveal reveal-d2">
         <div class="pricing-name">团队版</div><div class="pricing-desc">小型团队协作</div>
@@ -429,7 +504,7 @@
           <li><svg><use href="#i-check"/></svg>审核流程</li>
           <li class="disabled"><svg><use href="#i-x"/></svg>API 接入</li>
         </ul>
-        <a href="/login" class="pricing-btn">选择团队版</a>
+        <a href="/login" class="pricing-btn js-checkout" data-plan="team" data-plan-name="团队版" data-plan-price="199">选择团队版</a>
       </div>
       <div class="pricing-card reveal reveal-d3">
         <div class="pricing-name">企业版</div><div class="pricing-desc">不限规模扩展</div>
@@ -448,6 +523,43 @@
   </div>
 </section>
 
+<!-- FAQ（GEO：问答型内容便于 AI 检索引用） -->
+<section class="section" id="faq" style="padding:80px 0" aria-labelledby="faq-title">
+  <div class="container">
+    <div class="section-head center reveal">
+      <span class="section-tag">常见问题</span>
+      <h2 id="faq-title">关于稿定分发，你可能想知道</h2>
+      <p>关于平台支持、套餐价格与团队协作的常见解答</p>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item reveal">
+        <summary>稿定分发支持同步发布到哪些平台？</summary>
+        <div class="faq-a">目前已接入 <strong>微信公众号、小红书、抖音、知乎、微博、B站 6 个主流内容平台</strong>，绑定账号后一次写作即可同步分发，并持续接入更多内容渠道。免费版与个人版最多可绑定 2 个平台，团队版支持全部平台，企业版不限平台数量。</div>
+      </details>
+      <details class="faq-item reveal reveal-d1">
+        <summary>稿定分发是怎么收费的？</summary>
+        <div class="faq-a">共四档套餐：<strong>免费版 ¥0</strong>（1 个账号、2 个平台、基础功能）、<strong>个人版 ¥39/月</strong>（2 个账号、2 个平台、定时发布）、<strong>团队版 ¥199/月</strong>（10 个账号、5 人协作、审核流程）、<strong>企业版 ¥999/月</strong>（不限账号与成员、API 接入）。可按月订阅，随时升级。</div>
+      </details>
+      <details class="faq-item reveal reveal-d2">
+        <summary>多个平台发布还需要逐个重新排版吗？</summary>
+        <div class="faq-a">不需要。在自研 Markdown 编辑器中完成一次写作后，系统会<strong>自动适配各平台格式</strong>，支持分屏预览、图片拖拽上传和草稿版本管理，点击发布即可并行推送到所有目标账号，并实时反馈每个平台的发布状态。</div>
+      </details>
+      <details class="faq-item reveal">
+        <summary>定时发布和审核流程分别是哪个套餐支持？</summary>
+        <div class="faq-a"><strong>定时发布</strong>从个人版（¥39/月）起支持，可提前安排内容在指定时间自动发布；<strong>审核流程</strong>需要团队版（¥199/月）及以上，支持提交审核、通过、驳回与回退，适合有内容合规要求的团队。免费版不包含这两项功能。</div>
+      </details>
+      <details class="faq-item reveal reveal-d1">
+        <summary>支持团队协作和权限管理吗？</summary>
+        <div class="faq-a">支持。团队版支持最多 5 名成员，企业版不限成员数。通过邀请链接或邮件邀请成员加入，提供<strong>管理员、编辑、审核员、只读四级角色</strong>的细粒度权限控制，配合审核流程保障团队内容安全。</div>
+      </details>
+      <details class="faq-item reveal reveal-d2">
+        <summary>绑定的平台账号和素材数据安全吗？</summary>
+        <div class="faq-a">安全机制贯穿全流程：用户认证采用 <strong>JWT</strong>，平台授权 Token 加密存储，关键操作记录审计日志，误删内容有软删除保护；素材文件存储于对象存储并按 SHA256 自动去重，支持随时检索复用。</div>
+      </details>
+    </div>
+  </div>
+</section>
+
 <!-- CTA -->
 <section class="section" style="padding:80px 0 120px">
   <div class="container">
@@ -459,7 +571,131 @@
   </div>
 </section>
 
-<footer><p>© 2026 稿定分发 · 多平台内容分发工具 · 让创作更有价值</p></footer>
+</main>
+
+<footer>
+  <nav aria-label="页脚导航" style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;font-size:13px">
+    <a href="#features" style="color:var(--muted)">产品功能</a>
+    <a href="#platforms" style="color:var(--muted)">支持平台</a>
+    <a href="#pricing" style="color:var(--muted)">套餐定价</a>
+    <a href="#faq" style="color:var(--muted)">常见问题</a>
+    <a href="/login" style="color:var(--muted)">登录 / 注册</a>
+  </nav>
+  <p>© 2026 稿定分发 · 多平台内容分发工具 · 让创作更有价值</p>
+</footer>
+
+<!-- 支付弹窗 -->
+<div class="modal-mask" id="payModal" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+  <div class="modal">
+    <button class="modal-close" id="payClose" aria-label="关闭">✕</button>
+
+    <!-- 收银台 -->
+    <div id="payForm">
+      <div class="pay-title" id="payTitle">升级套餐</div>
+      <div class="pay-sub">完成支付后前往登录/注册，套餐将在登录后生效</div>
+      <div class="pay-order">
+        <div>
+          <div class="pay-order-name" id="payPlanName">个人版</div>
+          <div class="pay-order-cycle">按月订阅 · 随时可取消</div>
+        </div>
+        <div class="pay-order-price">¥<span id="payPlanPrice">39</span></div>
+      </div>
+      <div class="pay-methods">
+        <button type="button" class="pay-method active" data-method="wechat">
+          <svg class="m-wechat" viewBox="0 0 24 24" fill="currentColor"><path d="M8.7 7.6c.5 0 .9.3.9.8s-.4.8-.9.8-.9-.3-.9-.8.4-.8.9-.8Zm4.8 0c.5 0 .9.3.9.8s-.4.8-.9.8-.9-.3-.9-.8.4-.8.9-.8ZM9.1 4C5 4 2 6.6 2 9.9c0 1.9 1 3.5 2.7 4.6l-.5 1.9 2.1-1.1c.6.1 1.1.2 1.7.2h.6a4.7 4.7 0 0 1-.2-1.4c0-3 2.9-5.3 6.4-5.3h.5C14.6 5.9 12.1 4 9.1 4Zm12.4 9.8c0-2.7-2.6-4.9-5.7-4.9s-5.7 2.2-5.7 4.9 2.6 4.9 5.7 4.9c.6 0 1.1-.1 1.7-.2l1.8 1-.4-1.6c1.6-.9 2.6-2.3 2.6-4.1Zm-7.6-.8c-.4 0-.7-.3-.7-.7s.3-.7.7-.7.7.3.7.7-.3.7-.7.7Zm3.8 0c-.4 0-.7-.3-.7-.7s.3-.7.7-.7.7.3.7.7-.3.7-.7.7Z"/></svg>
+          微信支付
+        </button>
+        <button type="button" class="pay-method" data-method="alipay">
+          <svg class="m-alipay" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h14a3 3 0 0 1 3 3v9.6c-2-.9-4.3-2-6.1-3.1.4-.8.7-1.7.9-2.6h-4.2V8.7h5.1V8h-5.1V6.1h-2.1c-.4 0-.4.4-.4.4V8h-5v.7h5v1.2H5.4v.7h7.5c-.2.7-.4 1.3-.7 1.9-1.8-.6-3.7-1-4.9-.8-1.4.2-2.3 1-2.4 2.1-.1 1.7 1.3 2.7 2.9 2.7 1.5 0 2.9-.8 4-2.2 1.6.8 3.4 1.9 4.8 2.8H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Zm2.9 12.1c-1.1.9-2.7 1.3-4 .8-.8-.3-1.2-1-.9-1.8.2-.7 1-1.1 1.8-1.2 1-.1 2 .2 3.3.7-.1.6-.2 1.1-.2 1.5Zm9.6.2c1.3.7 2.5 1.4 3.5 2V18a3 3 0 0 1-3 3h-.6c-.4-1.1-1-2.5-1.7-3.8.8-.4 1.6-.9 2.4-1.9Z"/></svg>
+          支付宝
+        </button>
+      </div>
+      <button type="button" class="pay-btn" id="payConfirm">立即支付 ¥<span id="payBtnPrice">39</span></button>
+      <div class="pay-note">支付即代表同意《服务协议》与《自动续费规则》</div>
+    </div>
+
+    <!-- 支付成功 -->
+    <div class="pay-state" id="paySuccess">
+      <div class="pay-state-icon ok">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h3>支付成功</h3>
+      <p id="paySuccessText">个人版已开通，正在前往登录/注册…</p>
+      <button type="button" class="pay-btn" id="payGoLogin">前往登录/注册</button>
+    </div>
+  </div>
+</div>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.gaodingfenfa.com/#organization",
+      "name": "稿定分发",
+      "url": "https://www.gaodingfenfa.com/gaodinintriduce/",
+      "logo": "https://www.gaodingfenfa.com/gaodinintriduce/og-cover.jpg",
+      "description": "一站式多平台内容分发工具，支持微信公众号、小红书、抖音、知乎、微博、B站一键同步发布。",
+      "areaServed": "CN"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://www.gaodingfenfa.com/#website",
+      "name": "稿定分发",
+      "url": "https://www.gaodingfenfa.com/gaodinintriduce/",
+      "inLanguage": "zh-CN",
+      "publisher": {"@id": "https://www.gaodingfenfa.com/#organization"}
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://www.gaodingfenfa.com/#product",
+      "name": "稿定分发 — 多平台内容分发工具",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "多平台内容分发与新媒体管理",
+      "operatingSystem": "Web",
+      "url": "https://www.gaodingfenfa.com/gaodinintriduce/",
+      "inLanguage": "zh-CN",
+      "publisher": {"@id": "https://www.gaodingfenfa.com/#organization"},
+      "description": "Markdown 一次写作，一键同步发布到微信公众号、小红书、抖音、知乎、微博、B站；支持定时发布、智能素材库、团队协作与审核流程。",
+      "featureList": [
+        "自研 Markdown 编辑器，分屏预览与版本管理",
+        "6 大主流平台一键同步分发",
+        "定时发布与立即发布",
+        "智能素材库与 SHA256 去重",
+        "团队协作、四级角色权限与审核流程",
+        "多维度数据看板",
+        "JWT 认证、Token 加密存储与审计日志"
+      ],
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "CNY",
+        "lowPrice": "0",
+        "highPrice": "999",
+        "offerCount": "4",
+        "offers": [
+          {"@type": "Offer", "name": "免费版", "price": "0", "priceCurrency": "CNY", "description": "1 个社交账号、2 个平台、基础创作与素材库"},
+          {"@type": "Offer", "name": "个人版", "price": "39", "priceCurrency": "CNY", "description": "2 个账号、2 个平台、定时发布"},
+          {"@type": "Offer", "name": "团队版", "price": "199", "priceCurrency": "CNY", "description": "10 个账号、5 人协作、审核流程"},
+          {"@type": "Offer", "name": "企业版", "price": "999", "priceCurrency": "CNY", "description": "不限账号与成员、API 接入"}
+        ]
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://www.gaodingfenfa.com/gaodinintriduce/#faq",
+      "mainEntity": [
+        {"@type": "Question", "name": "稿定分发支持同步发布到哪些平台？", "acceptedAnswer": {"@type": "Answer", "text": "目前已接入微信公众号、小红书、抖音、知乎、微博、B站 6 个主流内容平台，绑定账号后一次写作即可同步分发，并持续接入更多内容渠道。免费版与个人版最多可绑定 2 个平台，团队版支持全部平台，企业版不限平台数量。"}},
+        {"@type": "Question", "name": "稿定分发是怎么收费的？", "acceptedAnswer": {"@type": "Answer", "text": "共四档套餐：免费版 ¥0（1 个账号、2 个平台、基础功能）、个人版 ¥39/月（2 个账号、2 个平台、定时发布）、团队版 ¥199/月（10 个账号、5 人协作、审核流程）、企业版 ¥999/月（不限账号与成员、API 接入）。可按月订阅，随时升级。"}},
+        {"@type": "Question", "name": "多个平台发布还需要逐个重新排版吗？", "acceptedAnswer": {"@type": "Answer", "text": "不需要。在自研 Markdown 编辑器中完成一次写作后，系统会自动适配各平台格式，支持分屏预览、图片拖拽上传和草稿版本管理，点击发布即可并行推送到所有目标账号，并实时反馈每个平台的发布状态。"}},
+        {"@type": "Question", "name": "定时发布和审核流程分别是哪个套餐支持？", "acceptedAnswer": {"@type": "Answer", "text": "定时发布从个人版（¥39/月）起支持，可提前安排内容在指定时间自动发布；审核流程需要团队版（¥199/月）及以上，支持提交审核、通过、驳回与回退，适合有内容合规要求的团队。免费版不包含这两项功能。"}},
+        {"@type": "Question", "name": "支持团队协作和权限管理吗？", "acceptedAnswer": {"@type": "Answer", "text": "支持。团队版支持最多 5 名成员，企业版不限成员数。通过邀请链接或邮件邀请成员加入，提供管理员、编辑、审核员、只读四级角色的细粒度权限控制，配合审核流程保障团队内容安全。"}},
+        {"@type": "Question", "name": "绑定的平台账号和素材数据安全吗？", "acceptedAnswer": {"@type": "Answer", "text": "安全机制贯穿全流程：用户认证采用 JWT，平台授权 Token 加密存储，关键操作记录审计日志，误删内容有软删除保护；素材文件存储于对象存储并按 SHA256 自动去重，支持随时检索复用。"}}
+      ]
+    }
+  ]
+}
+</script>
 
 <script>
 const io=new IntersectionObserver(e=>{e.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target)}})},{threshold:.12,rootMargin:'0px 0px -40px 0px'});
@@ -467,7 +703,7 @@ document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 const nav=document.getElementById('nav');
 window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',window.scrollY>20)},{passive:true});
 const burger=document.getElementById('burger'),navLinks=document.getElementById('navLinks');
-burger.addEventListener('click',()=>navLinks.classList.toggle('open'));
+burger.addEventListener('click',()=>{const open=navLinks.classList.toggle('open');burger.setAttribute('aria-expanded',String(open));});
 navLinks.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>navLinks.classList.remove('open')));
 document.querySelectorAll('.feature, .pricing-card').forEach(c=>{
   c.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5;const y=(e.clientY-r.top)/r.height-.5;c.style.transform=`perspective(800px) rotateY(${x*4}deg) rotateX(${-y*4}deg) translateY(-4px)`});
@@ -475,6 +711,76 @@ document.querySelectorAll('.feature, .pricing-card').forEach(c=>{
 });
 const hc=document.querySelector('.hero-content');
 window.addEventListener('scroll',()=>{if(window.scrollY<800){hc.style.transform=`translateY(${window.scrollY*.15}px)`;hc.style.opacity=Math.max(0,1-window.scrollY/600)}},{passive:true});
+
+/* ===== 套餐下单 -> 模拟支付 -> 登录/注册 ===== */
+const payModal=document.getElementById('payModal');
+const payForm=document.getElementById('payForm');
+const paySuccess=document.getElementById('paySuccess');
+const payPlanName=document.getElementById('payPlanName');
+const payPlanPrice=document.getElementById('payPlanPrice');
+const payBtnPrice=document.getElementById('payBtnPrice');
+const paySuccessText=document.getElementById('paySuccessText');
+const payConfirm=document.getElementById('payConfirm');
+let currentPlan=null, paying=false;
+
+function openPay(plan,name,price){
+  currentPlan={plan,name,price};
+  payPlanName.textContent=name;
+  payPlanPrice.textContent=price;
+  payBtnPrice.textContent=price;
+  paySuccessText.textContent=`${name}已开通，正在前往登录/注册…`;
+  payForm.style.display='block';
+  paySuccess.classList.remove('show');
+  resetPayBtn();
+  payModal.classList.add('open');
+  document.body.classList.add('modal-lock');
+}
+function closePay(){
+  if(paying) return; // 支付处理中禁止关闭
+  payModal.classList.remove('open');
+  document.body.classList.remove('modal-lock');
+}
+function resetPayBtn(){
+  paying=false;
+  payConfirm.disabled=false;
+  payConfirm.innerHTML=`立即支付 ¥<span id="payBtnPrice">${currentPlan?currentPlan.price:''}</span>`;
+}
+function goLogin(){
+  // 携带所选套餐，登录/注册页可据此引导升级（如后续接通真实支付/套餐接口）
+  const url=`/login?plan=${encodeURIComponent(currentPlan.plan)}&source=checkout`;
+  window.location.href=url;
+}
+
+document.querySelectorAll('.js-checkout').forEach(btn=>{
+  btn.addEventListener('click',e=>{
+    e.preventDefault();
+    openPay(btn.dataset.plan,btn.dataset.planName,btn.dataset.planPrice);
+  });
+});
+document.querySelectorAll('.pay-method').forEach(m=>{
+  m.addEventListener('click',()=>{
+    document.querySelectorAll('.pay-method').forEach(x=>x.classList.remove('active'));
+    m.classList.add('active');
+  });
+});
+document.getElementById('payClose').addEventListener('click',closePay);
+payModal.addEventListener('click',e=>{if(e.target===payModal)closePay();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&payModal.classList.contains('open'))closePay();});
+
+payConfirm.addEventListener('click',()=>{
+  if(paying||!currentPlan) return;
+  paying=true;
+  payConfirm.disabled=true;
+  payConfirm.innerHTML='<span class="spinner"></span>支付处理中…';
+  // 模拟支付网关流程（当前项目未接入真实支付通道）
+  setTimeout(()=>{
+    payForm.style.display='none';
+    paySuccess.classList.add('show');
+    paying=false;
+    setTimeout(goLogin,1200);
+  },1600);
+});
+document.getElementById('payGoLogin').addEventListener('click',goLogin);
 </script>
 </body>
 </html>

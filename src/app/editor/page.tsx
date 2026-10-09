@@ -213,6 +213,14 @@ export default function EditorPage() {
   // ---- AI ----
   const handleAi = async () => {
     if (!aiDialog) return;
+    // 润色/标题/标签需要正文内容，无内容时直接提示
+    if (aiDialog !== 'generate') {
+      const content = aiInput || contentMd;
+      if (!content.trim()) {
+        toast.warning('当前未识别到内容，请先输入正文');
+        return;
+      }
+    }
     setAiLoading(true);
     try {
       if (aiDialog === 'generate') {

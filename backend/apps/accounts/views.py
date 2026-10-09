@@ -97,11 +97,12 @@ class AccountViewSet(viewsets.ModelViewSet):
         ser = self.get_serializer(data=request.data)
         ser.is_valid(raise_exception=True)
         team_id = _resolve_team_id(request)
-        # 检查套餐账号数量限制
+        # 检查套餐账号数量 + 平台数限制
         from apps.teams.models import Team
-        from apps.teams.services import check_plan_limit
+        from apps.teams.services import check_plan_limit, check_platform_limit
         team = Team.objects.get(id=team_id)
         check_plan_limit(team, "accounts")
+        check_platform_limit(team, ser.validated_data["platform"])
         account = services.create_account(
             team_id=team_id,
             user=request.user,

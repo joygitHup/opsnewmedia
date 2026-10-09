@@ -1,0 +1,26 @@
+# 稿定分发 — 多平台内容分发工具
+
+> 稿定分发是一站式多平台内容分发 SaaS：Markdown 一次写作，一键同步发布到微信公众号、小红书、抖音、知乎、微博、B站；支持定时发布、智能素材库、团队协作、四级角色权限与审核流程。面向自媒体创作者、新媒体运营团队与企业内容部门。
+
+## 核心功能
+- [自研 Markdown 编辑器](https://www.gaodingfenfa.com/gaodinintriduce/#features)：分屏预览、图片拖拽上传、草稿版本管理
+- [多平台一键分发](https://www.gaodingfenfa.com/gaodinintriduce/#platforms)：覆盖微信公众号、小红书、抖音、知乎、微博、B站 6 个平台
+- [发布工作流](https://www.gaodingfenfa.com/gaodinintriduce/#workflow)：立即发布或定时发布，实时反馈各平台发布状态
+- [素材库与数据看板]：素材统一管理、SHA256 自动去重；发布趋势与账号表现统计
+- 团队协作：邀请链接/邮件加入，管理员、编辑、审核员、只读四级角色
+- 企业级安全：JWT 认证、平台 Token 加密存储、操作审计日志、软删除保护
+
+## 套餐定价（人民币，按月订阅）
+- [免费版 ¥0/月](https://www.gaodingfenfa.com/gaodinintriduce/#pricing)：1 个社交账号、2 个平台、基础创作与素材库
+- [个人版 ¥39/月](https://www.gaodingfenfa.com/gaodinintriduce/#pricing)：2 个账号、2 个平台、定时发布
+- [团队版 ¥199/月](https://www.gaodingfenfa.com/gaodinintriduce/#pricing)：10 个账号、5 人协作、审核流程
+- [企业版 ¥999/月](https://www.gaodingfenfa.com/gaodinintriduce/#pricing)：不限账号与成员、API 接入
+
+## 常见问题
+- [稿定分发支持同步发布到哪些平台？](https://www.gaodingfenfa.com/gaodinintriduce/#faq)
+- [稿定分发是怎么收费的？](https://www.gaodingfenfa.com/gaodinintriduce/#faq)
+- [定时发布和审核流程分别是哪个套餐支持？](https://www.gaodingfenfa.com/gaodinintriduce/#faq)
+- [支持团队协作和权限管理吗？](https://www.gaodingfenfa.com/gaodinintriduce/#faq)
+
+## 开始使用
+- [免费注册 / 登录](https://www.gaodingfenfa.com/login)：免费版即开即用，约 5 分钟完成首次多平台分发
