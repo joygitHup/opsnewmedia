@@ -1,15 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Bell,
   Search,
   ChevronDown,
   Plus,
-  LayoutGrid,
   LogOut,
   User as UserIcon,
   Settings,
+  Send,
+  ShieldCheck,
+  Users2,
+  Link2,
+  Info,
+  CheckCheck,
+  Inbox,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,28 +28,50 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { NewContentDialog } from './new-content-dialog';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { teamsApi, type Team } from '@/lib/api/teams';
 import { accountsApi, type Account } from '@/lib/api/accounts';
+import {
+  notificationsApi,
+  type AppNotification,
+  type NotificationType,
+} from '@/lib/api/notifications';
 import { PLATFORM_CONFIG } from '@/types';
 import { toast } from 'sonner';
+
+const NOTIF_ICON: Record<NotificationType, typeof Bell> = {
+  publish: Send,
+  review: ShieldCheck,
+  team: Users2,
+  account: Link2,
+  system: Info,
+};
+
+const NOTIF_COLOR: Record<NotificationType, string> = {
+  publish: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400',
+  review: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+  team: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+  account: 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400',
+  system: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
+};
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
+  const min = 60 * 1000;
+  const hour = 60 * min;
+  const day = 24 * hour;
+  if (diff < min) return '刚刚';
+  if (diff < hour) return `${Math.floor(diff / min)} 分钟前`;
+  if (diff < day) return `${Math.floor(diff / hour)} 小时前`;
+  if (diff < 7 * day) return `${Math.floor(diff / day)} 天前`;
+  return `${d.getMonth() + 1}-${d.getDate()}`;
+}
 
 export function TopBar() {
   const { user, logout, refresh } = useAuth();
@@ -52,6 +80,62 @@ export function TopBar() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [recent, setRecent] = useState<AppNotification[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const refreshUnread = useCallback(async () => {
+    try {
+      const res = await notificationsApi.unreadCount();
+      setUnread(res.total);
+    } catch {
+      // 静默（未登录或接口异常不打扰）
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUnread();
+    const timer = setInterval(refreshUnread, 60000);
+    return () => clearInterval(timer);
+  }, [refreshUnread]);
+
+  const loadRecent = useCallback(async () => {
+    try {
+      const res = await notificationsApi.list({ pageSize: 6 });
+      setRecent(res.list);
+    } catch {
+      setRecent([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (notifOpen) loadRecent();
+  }, [notifOpen, loadRecent]);
+
+  const handleNotifClick = async (n: AppNotification) => {
+    setNotifOpen(false);
+    if (!n.isRead) {
+      setRecent((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+      setUnread((v) => Math.max(0, v - 1));
+      try {
+        await notificationsApi.markRead(n.id);
+      } catch {
+        // 静默
+      }
+    }
+    if (n.link) router.push(n.link);
+  };
+
+  const handleMarkAll = async () => {
+    try {
+      await notificationsApi.markAllRead();
+      setRecent((prev) => prev.map((x) => ({ ...x, isRead: true })));
+      setUnread(0);
+      toast.success('已全部标记为已读');
+    } catch (err) {
+      toast.error((err as Error).message || '操作失败');
+    }
+  };
 
   useEffect(() => {
     // 加载团队 + 当前团队
@@ -163,10 +247,82 @@ export function TopBar() {
         </Button>
 
         {/* 通知 */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-        </Button>
+        <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="w-5 h-5" />
+              {unread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-medium leading-none">
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80 p-0">
+            <div className="flex items-center justify-between px-3 py-2.5 border-b">
+              <span className="text-sm font-semibold">消息通知</span>
+              {unread > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAll}
+                  className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  全部已读
+                </button>
+              )}
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {recent.length === 0 ? (
+                <div className="flex flex-col items-center py-10 text-zinc-400">
+                  <Inbox className="w-6 h-6 mb-2" />
+                  <span className="text-xs">暂无消息</span>
+                </div>
+              ) : (
+                recent.map((n) => {
+                  const Icon = NOTIF_ICON[n.type] || Info;
+                  return (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => handleNotifClick(n)}
+                      className="w-full flex gap-2.5 px-3 py-2.5 text-left hover:bg-zinc-50 dark:hover:bg-zinc-900 border-b last:border-b-0 border-zinc-100 dark:border-zinc-800/60"
+                    >
+                      <span
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${NOTIF_COLOR[n.type] || NOTIF_COLOR.system}`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className={`text-xs truncate ${n.isRead ? 'text-zinc-600 dark:text-zinc-400' : 'font-semibold text-zinc-900 dark:text-zinc-100'}`}
+                          >
+                            {n.title}
+                          </span>
+                          {!n.isRead && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                          )}
+                        </span>
+                        {n.content && (
+                          <span className="block text-[11px] text-zinc-400 mt-0.5 line-clamp-2">
+                            {n.content}
+                          </span>
+                        )}
+                        <span className="block text-[10px] text-zinc-300 dark:text-zinc-500 mt-0.5">
+                          {formatTime(n.createdAt)}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <DropdownMenuItem asChild className="justify-center text-sm text-indigo-600 cursor-pointer py-2.5">
+              <Link href="/notifications">查看全部消息</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* 用户头像 */}
         <DropdownMenu>
@@ -194,14 +350,16 @@ export function TopBar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="cursor-pointer">
-              <Link href="/team" className="flex items-center gap-2">
+              <Link href="/settings" className="flex items-center gap-2">
                 <UserIcon className="w-4 h-4" />
                 个人设置
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              团队设置
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href="/team" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                团队设置
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -216,63 +374,7 @@ export function TopBar() {
       </div>
 
       {/* 新建内容弹窗 */}
-      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>新建内容</DialogTitle>
-            <DialogDescription>
-              选择一种方式开始创作你的内容
-            </DialogDescription>
-          </DialogHeader>
-          <Tabs defaultValue="create" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="create">新建内容</TabsTrigger>
-              <TabsTrigger value="template">从模板</TabsTrigger>
-              <TabsTrigger value="import">导入内容</TabsTrigger>
-            </TabsList>
-            <TabsContent value="create" className="mt-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  className="h-24 flex flex-col gap-2 hover:border-indigo-300 hover:bg-indigo-50/50"
-                  onClick={() => {
-                    setShowNewDialog(false);
-                    router.push('/editor');
-                  }}
-                >
-                  <LayoutGrid className="w-6 h-6 text-indigo-500" />
-                  <span className="text-sm font-medium">图文内容</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 flex flex-col gap-2 hover:border-indigo-300 hover:bg-indigo-50/50"
-                >
-                  <span className="text-2xl">🎬</span>
-                  <span className="text-sm font-medium">视频内容</span>
-                </Button>
-              </div>
-            </TabsContent>
-            <TabsContent value="template" className="mt-4">
-              <div className="text-sm text-zinc-500 text-center py-8">
-                模板库功能即将上线
-              </div>
-            </TabsContent>
-            <TabsContent value="import" className="mt-4">
-              <div className="text-sm text-zinc-500 text-center py-8">
-                导入功能即将上线
-              </div>
-            </TabsContent>
-          </Tabs>
-          <DialogFooter className="sm:justify-start">
-            <div className="text-xs text-zinc-500">
-              <Badge variant="outline" className="mr-2">
-                AI
-              </Badge>
-              试试 AI 帮你生成内容？
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <NewContentDialog open={showNewDialog} onOpenChange={setShowNewDialog} />
     </header>
   );
 }

@@ -26,10 +26,14 @@ def create_draft(*, team_id: int, user: User, **fields: Any) -> ContentDraft:
         team_id=team_id,
         author=user,
         title=fields.get("title", "未命名"),
+        content_type=fields.get("content_type", "article"),
         content_md=fields.get("content_md", ""),
         cover_url=fields.get("cover_url", ""),
         tags=fields.get("tags", []) or [],
         platforms=fields.get("platforms", []) or [],
+        media_key=fields.get("media_key", ""),
+        media_name=fields.get("media_name", ""),
+        media_cover_key=fields.get("media_cover_key", ""),
         status=DraftStatus.DRAFT,
         version_no=1,
     )
@@ -52,7 +56,10 @@ def create_draft(*, team_id: int, user: User, **fields: Any) -> ContentDraft:
 @transaction.atomic
 def update_draft(*, draft: ContentDraft, user: User, **fields: Any) -> ContentDraft:
     """更新草稿并自动产生新版本。"""
-    track_fields = {"title", "content_md", "cover_url", "tags", "platforms"}
+    track_fields = {
+        "title", "content_type", "content_md", "cover_url", "tags", "platforms",
+        "media_key", "media_name", "media_cover_key",
+    }
     changed: dict[str, Any] = {}
     for k in track_fields:
         if k in fields and getattr(draft, k) != fields[k]:

@@ -34,6 +34,7 @@ urlpatterns = [
         path("reviews/", include(("apps.reviews.urls", "reviews"), namespace="reviews")),
         path("integrations/", include(("apps.integrations.urls", "integrations"), namespace="integrations")),
         path("audit-logs/", include(("apps.audit_logs.urls", "audit_logs"), namespace="audit_logs")),
+        path("notifications/", include(("apps.notifications.urls", "notifications"), namespace="notifications")),
     ])),
     # OpenAPI 文档
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

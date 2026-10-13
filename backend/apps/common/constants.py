@@ -37,6 +37,11 @@ class DraftStatus(models.TextChoices):
     FAILED = "failed", "失败"
 
 
+class ContentType(models.TextChoices):
+    ARTICLE = "article", "图文"
+    VIDEO = "video", "视频"
+
+
 class PublishTaskStatus(models.TextChoices):
     PENDING = "pending", "待发布"
     PUBLISHING = "publishing", "发布中"
@@ -136,6 +141,15 @@ class ErrorCode:
     TASK_FAILED = 50020
     # 套餐限制
     PLAN_LIMIT_EXCEEDED = 40050
+
+
+# ===== 消息通知 =====
+class NotificationType(models.TextChoices):
+    SYSTEM = "system", "系统通知"
+    PUBLISH = "publish", "发布动态"
+    REVIEW = "review", "审核动态"
+    TEAM = "team", "团队动态"
+    ACCOUNT = "account", "账号动态"
 
 
 # ===== 套餐定义 =====

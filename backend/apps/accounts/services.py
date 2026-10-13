@@ -140,6 +140,16 @@ def refresh_account_token(*, account: Account) -> Account | None:
 def start_oauth(*, platform: str, redirect_uri: str) -> dict[str, str]:
     """生成授权 URL + state。state 落 Redis 5min 由 callback 校验。"""
     adapter = _get_adapter(platform)
+    # 凭据完整性检查：appid/secret 未配置时给出友好提示，避免跳转到空白授权页
+    appid = getattr(adapter, "appid", "") or adapter.credentials.get("appid", "")
+    if not appid:
+        platform_names = {"wechat": "微信公众号", "xiaohongshu": "小红书", "douyin": "抖音",
+                          "zhihu": "知乎", "weibo": "微博", "bilibili": "B站"}
+        name = platform_names.get(platform, platform)
+        raise BusinessError(
+            ErrorCode.BUSINESS_ERROR,
+            f"{name}平台凭据未配置，无法发起 OAuth 授权。请在 .env 中配置对应的 AppID/Secret。",
+        )
     state = secrets.token_urlsafe(16)
     from django.core.cache import cache
     cache.set(f"oauth:state:{state}", {"platform": platform}, timeout=300)

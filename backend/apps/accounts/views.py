@@ -152,9 +152,8 @@ class AccountViewSet(viewsets.ModelViewSet):
         platform = request.data.get("platform")
         if not platform:
             raise BusinessError(ErrorCode.INVALID_PARAM, "缺少 platform")
-        redirect_uri = ser.validated_data.get(
-            "redirect_uri",
-            request.build_absolute_uri("/api/v1/integrations/oauth/callback/"),
+        redirect_uri = request.data.get("redirectUri") or request.build_absolute_uri(
+            f"/api/v1/integrations/oauth/{platform}/callback/"
         )
         result = services.start_oauth(
             platform=platform, redirect_uri=redirect_uri
@@ -174,9 +173,8 @@ class AccountViewSet(viewsets.ModelViewSet):
             platform=platform,
             code=ser.validated_data["code"],
             state=ser.validated_data.get("state", ""),
-            redirect_uri=ser.validated_data.get(
-                "redirect_uri",
-                request.build_absolute_uri("/api/v1/integrations/oauth/callback/"),
+            redirect_uri=request.data.get("redirectUri") or request.build_absolute_uri(
+                f"/api/v1/integrations/oauth/{platform}/callback/"
             ),
             team_id=team_id,
             user=request.user,

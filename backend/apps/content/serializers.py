@@ -1,7 +1,7 @@
 """content/serializers.py — 内容草稿序列化器（§3.1）。"""
 from rest_framework import serializers
 
-from apps.common.constants import DraftStatus, PlatformType
+from apps.common.constants import ContentType, DraftStatus, PlatformType
 
 from .models import ContentDraft, ContentVersion
 
@@ -36,6 +36,10 @@ class ContentDraftListSerializer(serializers.ModelSerializer):
         source="author.display_name", read_only=True, default=""
     )
     statusName = serializers.CharField(source="get_status_display", read_only=True)
+    contentType = serializers.CharField(source="content_type", read_only=True)
+    contentTypeName = serializers.CharField(
+        source="get_content_type_display", read_only=True
+    )
     versionCount = serializers.IntegerField(read_only=True)
     coverUrl = serializers.URLField(source="cover_url", read_only=True)
     versionNo = serializers.IntegerField(source="version_no", read_only=True)
@@ -45,7 +49,8 @@ class ContentDraftListSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentDraft
         fields = [
-            "id", "title", "coverUrl", "status", "statusName",
+            "id", "title", "contentType", "contentTypeName", "coverUrl",
+            "status", "statusName",
             "versionNo", "platforms", "tags", "authorName",
             "versionCount", "createdAt", "updatedAt",
         ]
@@ -53,12 +58,38 @@ class ContentDraftListSerializer(serializers.ModelSerializer):
 
 class ContentDraftDetailSerializer(ContentDraftListSerializer):
     contentMd = serializers.CharField(source="content_md", read_only=True)
+    mediaName = serializers.CharField(source="media_name", read_only=True)
+    mediaKey = serializers.CharField(source="media_key", read_only=True)
+    mediaCoverKey = serializers.CharField(source="media_cover_key", read_only=True)
+    mediaUrl = serializers.SerializerMethodField()
+    mediaCoverUrl = serializers.SerializerMethodField()
     versions = serializers.SerializerMethodField()
 
     class Meta(ContentDraftListSerializer.Meta):
         fields = ContentDraftListSerializer.Meta.fields + [
-            "contentMd", "versions",
+            "contentMd", "mediaName", "mediaKey", "mediaCoverKey",
+            "mediaUrl", "mediaCoverUrl", "versions",
         ]
+
+    def _sign(self, key: str) -> str:
+        if not key:
+            return ""
+        try:
+            from apps.common.utils_minio import presigned_get_url
+            return presigned_get_url(key, expires_hours=24)
+        except Exception:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).warning(
+                "draft.media_presign_failed draft_id=%s", self.instance.pk
+                if self.instance else "?"
+            )
+            return ""
+
+    def get_mediaUrl(self, obj) -> str:
+        return self._sign(obj.media_key)
+
+    def get_mediaCoverUrl(self, obj) -> str:
+        return self._sign(obj.media_cover_key)
 
     def get_versions(self, obj):
         versions = getattr(obj, "_versions_prefetched", None)
@@ -72,10 +103,21 @@ class ContentDraftWriteSerializer(serializers.ModelSerializer):
 
     contentMd = serializers.CharField(source="content_md", required=False, allow_blank=True)
     coverUrl = serializers.URLField(source="cover_url", required=False, allow_blank=True)
+    contentType = serializers.ChoiceField(
+        source="content_type", choices=ContentType.choices, required=False
+    )
+    mediaKey = serializers.CharField(source="media_key", required=False, allow_blank=True)
+    mediaName = serializers.CharField(source="media_name", required=False, allow_blank=True)
+    mediaCoverKey = serializers.CharField(
+        source="media_cover_key", required=False, allow_blank=True
+    )
 
     class Meta:
         model = ContentDraft
-        fields = ["title", "contentMd", "coverUrl", "tags", "platforms"]
+        fields = [
+            "title", "contentType", "contentMd", "coverUrl", "tags", "platforms",
+            "mediaKey", "mediaName", "mediaCoverKey",
+        ]
 
 
 class ContentDraftPreviewSerializer(serializers.Serializer):

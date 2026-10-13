@@ -10,6 +10,7 @@ import {
   Loader2,
   Eye,
   Clock,
+  Video,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -162,7 +163,13 @@ export default function ContentListPage() {
               <Card key={d.id} className="group hover:shadow-md transition-shadow">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <Link href={`/editor?id=${d.id}`} className="flex-1 min-w-0">
+                    <Link
+                      href={`${d.contentType === 'video' ? '/video' : '/editor'}?id=${d.id}`}
+                      className="flex-1 min-w-0 flex items-center gap-1.5"
+                    >
+                      {d.contentType === 'video' && (
+                        <Video className="w-3.5 h-3.5 text-fuchsia-500 flex-shrink-0" />
+                      )}
                       <h3 className="font-medium truncate hover:text-indigo-600 transition-colors">
                         {d.title || '无标题'}
                       </h3>
@@ -210,7 +217,7 @@ export default function ContentListPage() {
                       {d.versionCount > 1 && <span>v{d.versionCount}</span>}
                     </div>
                     <div className="flex items-center gap-1">
-                      <Link href={`/editor?id=${d.id}`}>
+                      <Link href={`${d.contentType === 'video' ? '/video' : '/editor'}?id=${d.id}`}>
                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
                           <Eye className="w-3.5 h-3.5" />
                         </Button>

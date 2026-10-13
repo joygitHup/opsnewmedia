@@ -6,7 +6,7 @@
 from django.conf import settings
 from django.db import models
 
-from apps.common.constants import DraftStatus
+from apps.common.constants import ContentType, DraftStatus
 from apps.common.models import (
     SoftDeleteManager,
     SoftDeleteModel,
@@ -43,8 +43,21 @@ class ContentDraft(TeamScopedModel, TimeStampedModel, SoftDeleteModel):
         verbose_name="作者",
     )
     title = models.CharField("标题", max_length=200)
+    content_type = models.CharField(
+        "内容类型",
+        max_length=20,
+        choices=ContentType.choices,
+        default=ContentType.ARTICLE,
+        db_index=True,
+    )
     content_md = models.TextField("Markdown 正文", blank=True, default="")
     cover_url = models.URLField("封面 URL", blank=True, default="")
+    # 视频内容：存 MinIO object key（不存会过期的签名 URL），读取时动态签名
+    media_key = models.CharField("视频对象Key", max_length=512, blank=True, default="")
+    media_name = models.CharField("视频文件名", max_length=255, blank=True, default="")
+    media_cover_key = models.CharField(
+        "视频封面Key", max_length=512, blank=True, default=""
+    )
     tags = models.JSONField("标签", default=list, blank=True)
     status = models.CharField(
         "状态",

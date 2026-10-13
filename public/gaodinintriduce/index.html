@@ -592,7 +592,7 @@
     <!-- 收银台 -->
     <div id="payForm">
       <div class="pay-title" id="payTitle">升级套餐</div>
-      <div class="pay-sub">完成支付后前往登录/注册，套餐将在登录后生效</div>
+      <div class="pay-sub">支付成功后套餐立即生效，可随时在团队设置中升级或降级</div>
       <div class="pay-order">
         <div>
           <div class="pay-order-name" id="payPlanName">个人版</div>
@@ -721,14 +721,25 @@ const payPlanPrice=document.getElementById('payPlanPrice');
 const payBtnPrice=document.getElementById('payBtnPrice');
 const paySuccessText=document.getElementById('paySuccessText');
 const payConfirm=document.getElementById('payConfirm');
+const payGo=document.getElementById('payGoLogin');
 let currentPlan=null, paying=false;
+
+// ===== 登录态判断（与主应用共享 localStorage token）=====
+function isLoggedIn(){
+  try { return !!localStorage.getItem('opsnewmedia.accessToken'); } catch(e){ return false; }
+}
+// 已登录用户：宣传页所有「免费开始/立即开始/登录注册」入口直接进入系统
+if(isLoggedIn()){
+  document.querySelectorAll('a[href="/login"]').forEach(a=>a.setAttribute('href','/dashboard'));
+}
 
 function openPay(plan,name,price){
   currentPlan={plan,name,price};
   payPlanName.textContent=name;
   payPlanPrice.textContent=price;
   payBtnPrice.textContent=price;
-  paySuccessText.textContent=`${name}已开通，正在前往登录/注册…`;
+  paySuccessText.textContent=`${name}已开通，正在前往${isLoggedIn()?'系统控制台':'登录/注册'}…`;
+  payGo.textContent=isLoggedIn()?'进入系统':'前往登录/注册';
   payForm.style.display='block';
   paySuccess.classList.remove('show');
   resetPayBtn();
@@ -745,8 +756,13 @@ function resetPayBtn(){
   payConfirm.disabled=false;
   payConfirm.innerHTML=`立即支付 ¥<span id="payBtnPrice">${currentPlan?currentPlan.price:''}</span>`;
 }
-function goLogin(){
-  // 携带所选套餐，登录/注册页可据此引导升级（如后续接通真实支付/套餐接口）
+function goAfterPay(){
+  if(isLoggedIn()){
+    // 已登录：支付完成直接进入系统
+    window.location.href='/dashboard';
+    return;
+  }
+  // 未登录：携带所选套餐去登录/注册页
   const url=`/login?plan=${encodeURIComponent(currentPlan.plan)}&source=checkout`;
   window.location.href=url;
 }
@@ -754,6 +770,11 @@ function goLogin(){
 document.querySelectorAll('.js-checkout').forEach(btn=>{
   btn.addEventListener('click',e=>{
     e.preventDefault();
+    // 未登录：先去登录/注册，携带所选套餐，登录后可继续选择
+    if(!isLoggedIn()){
+      window.location.href=`/login?plan=${encodeURIComponent(btn.dataset.plan)}&source=pricing`;
+      return;
+    }
     openPay(btn.dataset.plan,btn.dataset.planName,btn.dataset.planPrice);
   });
 });
@@ -777,10 +798,10 @@ payConfirm.addEventListener('click',()=>{
     payForm.style.display='none';
     paySuccess.classList.add('show');
     paying=false;
-    setTimeout(goLogin,1200);
+    setTimeout(goAfterPay,1200);
   },1600);
 });
-document.getElementById('payGoLogin').addEventListener('click',goLogin);
+document.getElementById('payGoLogin').addEventListener('click',goAfterPay);
 </script>
 </body>
 </html>

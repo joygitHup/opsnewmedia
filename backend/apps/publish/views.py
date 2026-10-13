@@ -100,8 +100,8 @@ class PublishTaskViewSet(viewsets.ModelViewSet):
         task = services.create_publish_task(
             team_id=team_id,
             user=request.user,
-            draft_id=ser.validated_data["draft"],
-            account_id=ser.validated_data["account"],
+            draft_id=ser.validated_data["draft"].id,
+            account_id=ser.validated_data["account"].id,
             scheduled_at=ser.validated_data.get("scheduled_at"),
             payload=ser.validated_data.get("payload") or {},
         )

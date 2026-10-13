@@ -1,9 +1,13 @@
 import { http, paginatedGet } from './client';
 import type { PlatformType } from '@/types';
 
+export type ContentDraftType = 'article' | 'video';
+
 export interface ContentDraft {
   id: number;
   title: string;
+  contentType: ContentDraftType;
+  contentTypeName: string;
   coverUrl: string;
   status: 'draft' | 'pending' | 'published' | 'failed';
   statusName: string;
@@ -35,15 +39,24 @@ export interface ContentVersionDetail extends ContentVersionBrief {
 
 export interface ContentDraftDetail extends ContentDraft {
   contentMd: string;
+  mediaName: string;
+  mediaKey: string;
+  mediaCoverKey: string;
+  mediaUrl: string;
+  mediaCoverUrl: string;
   versions: ContentVersionBrief[];
 }
 
 export interface ContentDraftBody {
   title: string;
+  contentType?: ContentDraftType;
   contentMd?: string;
   coverUrl?: string;
   tags?: string[];
   platforms?: PlatformType[];
+  mediaKey?: string;
+  mediaName?: string;
+  mediaCoverKey?: string;
 }
 
 export interface ContentPreviewResult {

@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
+  Bell,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -39,6 +40,7 @@ const menuItems = [
       { icon: FileEdit, label: '内容创作', href: '/editor' },
       { icon: FileText, label: '我的草稿', href: '/content' },
       { icon: Send, label: '一键分发', href: '/distribute' },
+      { icon: Bell, label: '消息中心', href: '/notifications' },
     ],
   },
   {
@@ -52,6 +54,12 @@ const menuItems = [
     title: '团队协作',
     items: [
       { icon: Users2, label: '团队成员', href: '/team' },
+    ],
+  },
+  {
+    title: '系统',
+    items: [
+      { icon: Settings, label: '个人设置', href: '/settings' },
     ],
   },
 ];

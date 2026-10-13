@@ -20,6 +20,35 @@ from .models import ReviewFlow, ReviewRecord
 from .sensitive import detect
 
 
+def _notify_review_result(flow: ReviewFlow, *, approved: bool, comment: str, reviewer: User) -> None:
+    """审核结果通知提交人（审批人本人提交的不打扰；通知失败不影响主流程）。"""
+    if not flow.submitted_by_id or flow.submitted_by_id == reviewer.id:
+        return
+    try:
+        from apps.common.constants import NotificationType
+        from apps.notifications.services import notify
+
+        draft_title = flow.draft.title if flow.draft_id else "未命名内容"
+        if approved:
+            title, content = "审核通过", f"《{draft_title}》已通过审核，可以发布"
+        else:
+            title = "审核驳回"
+            content = f"《{draft_title}》审核未通过" + (f"，意见：{comment[:100]}" if comment else "")
+        notify(
+            user=flow.submitted_by,
+            team=flow.team if flow.team_id else None,
+            type=NotificationType.REVIEW,
+            title=title,
+            content=content,
+            link=f"/editor?id={flow.draft_id}",
+        )
+    except Exception:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning(
+            "notify_review_result_failed flow_id=%s", flow.id, exc_info=True
+        )
+
+
 @transaction.atomic
 def submit_for_review(*, draft: ContentDraft, user: User, comment: str = "") -> ReviewFlow:
     """提交审核：状态变为 pending。"""
@@ -78,6 +107,7 @@ def approve(*, flow: ReviewFlow, user: User, comment: str = "") -> ReviewFlow:
         ContentDraft.objects.filter(id=flow.draft_id).update(
             status=DraftStatus.PUBLISHED, updated_at=timezone.now()
         )
+        _notify_review_result(flow, approved=True, comment=comment, reviewer=user)
     flow.save()
     return flow
 
@@ -100,6 +130,7 @@ def reject(*, flow: ReviewFlow, user: User, comment: str) -> ReviewFlow:
     ContentDraft.objects.filter(id=flow.draft_id).update(
         status=DraftStatus.DRAFT, updated_at=timezone.now()
     )
+    _notify_review_result(flow, approved=False, comment=comment, reviewer=user)
     return flow
 
 

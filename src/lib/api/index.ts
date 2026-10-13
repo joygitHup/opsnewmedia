@@ -8,3 +8,4 @@ export * from './materials';
 export * from './dashboard';
 export * from './reviews';
 export * from './ai';
+export * from './notifications';

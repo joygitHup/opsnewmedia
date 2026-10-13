@@ -10,6 +10,7 @@ export interface Material {
   size: number;
   contentType: string;
   hashSha256: string;
+  objectKey: string;
   tags: string[];
   uploaderName: string;
   createdAt: string;

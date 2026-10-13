@@ -31,6 +31,39 @@ from .models import PublishLog, PublishTask
 logger = logging.getLogger(__name__)
 
 
+def _notify_publish_result(task: PublishTask, *, success: bool, message: str = "") -> None:
+    """发布结果站内通知（接收人=任务创建者；通知失败不影响主流程）。"""
+    if not task.created_by_id:
+        return
+    try:
+        from apps.common.constants import NotificationType
+        from apps.notifications.services import notify
+
+        platform_name = task.get_platform_display()
+        draft_title = task.draft.title if task.draft_id else "未命名内容"
+        if success:
+            notify(
+                user=task.created_by,
+                team=task.team,
+                type=NotificationType.PUBLISH,
+                title=f"发布成功 · {platform_name}",
+                content=f"《{draft_title}》已成功发布到{platform_name}",
+                link="/distribute",
+            )
+        else:
+            notify(
+                user=task.created_by,
+                team=task.team,
+                type=NotificationType.PUBLISH,
+                title=f"发布失败 · {platform_name}",
+                content=f"《{draft_title}》发布失败：{message[:120]}",
+                link="/distribute",
+            )
+    except Exception:  # noqa: BLE001
+        logger.warning("notify_publish_result_failed task_id=%s", task.id, exc_info=True)
+
+
+
 def _get_adapter(platform: str):
     from apps.integrations.registry import get_adapter
     adapter = get_adapter(platform)
@@ -76,12 +109,36 @@ def create_publish_task(
 
     # 校验内容
     adapter = _get_adapter(account.platform)
+    payload = dict(payload or {})
+    # 视频草稿：服务端用 object key 动态签名后注入 payload（前端不接触签名串）
+    video_payload = payload.get("video")
+    if draft.content_type == "video" and draft.media_key:
+        signed_url = ""
+        try:
+            from apps.common.utils_minio import presigned_get_url
+            signed_url = presigned_get_url(draft.media_key, expires_hours=24)
+        except Exception:  # noqa: BLE001
+            logger.warning("publish.video_presign_failed draft_id=%s", draft.id, exc_info=True)
+        cover_url = ""
+        if draft.media_cover_key:
+            try:
+                from apps.common.utils_minio import presigned_get_url
+                cover_url = presigned_get_url(draft.media_cover_key, expires_hours=24)
+            except Exception:  # noqa: BLE001
+                pass
+        video_payload = {
+            **(video_payload or {}),
+            "url": signed_url,
+            "name": draft.media_name,
+            "coverUrl": cover_url,
+        }
+        payload["video"] = video_payload
     validation = adapter.validate_content(
         {
             "title": draft.title,
             "content": draft.content_md,
-            "images": (payload or {}).get("images", []),
-            "video": (payload or {}).get("video"),
+            "images": payload.get("images", []),
+            "video": video_payload,
             "tags": draft.tags,
         }
     )
@@ -210,6 +267,9 @@ def execute_task(task_id: int) -> dict[str, Any]:
             # 指数退避
             delay = 2 ** task.retry_count
             execute_publish_task.apply_async(args=[task.id], countdown=delay)
+        else:
+            # 重试用尽，通知创建者最终失败
+            _notify_publish_result(task, success=False, message=str(exc))
         return {"success": False, "error": str(exc)}
 
     duration_ms = int((time.time() - started) * 1000)
@@ -232,6 +292,7 @@ def execute_task(task_id: int) -> dict[str, Any]:
         ContentDraft.objects.filter(id=draft.id).update(
             status=DraftStatus.PUBLISHED, updated_at=timezone.now()
         )
+        _notify_publish_result(task, success=True)
         return {"success": True, "platform_content_id": result.platform_content_id}
 
     task.status = PublishTaskStatus.FAILED
@@ -244,4 +305,7 @@ def execute_task(task_id: int) -> dict[str, Any]:
         from .tasks import execute_publish_task
         delay = 2 ** task.retry_count
         execute_publish_task.apply_async(args=[task.id], countdown=delay)
+    else:
+        # 重试用尽，通知创建者最终失败
+        _notify_publish_result(task, success=False, message=result.message)
     return {"success": False, "error": result.message}

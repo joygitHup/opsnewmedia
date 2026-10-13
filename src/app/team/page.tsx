@@ -282,10 +282,18 @@ export default function TeamPage() {
             {teams.map((team) => {
               const isCurrent = currentTeam?.id === team.id;
               return (
-                <button
+                <div
                   key={team.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleSwitchTeam(team)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSwitchTeam(team);
+                    }
+                  }}
+                  className={`w-full text-left p-3 rounded-lg border transition-colors cursor-pointer ${
                     isCurrent
                       ? 'border-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30'
                       : 'border-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
@@ -300,6 +308,7 @@ export default function TeamPage() {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditingTeam(team);
@@ -311,6 +320,7 @@ export default function TeamPage() {
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setDeletingTeam(team);
@@ -327,7 +337,7 @@ export default function TeamPage() {
                       )}
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
             {teams.length === 0 && (

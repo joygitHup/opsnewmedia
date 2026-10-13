@@ -28,26 +28,36 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    return [
-      {
-        // 宣传页干净路径（与 canonical 保持一致，地址栏不显示 index.html）
-        source: '/gaodinintriduce',
-        destination: '/gaodinintriduce/index.html',
-      },
-      {
-        source: '/gaodinintriduce/',
-        destination: '/gaodinintriduce/index.html',
-      },
-      {
-        // 转发到后端时统一补尾部斜杠，匹配 Django APPEND_SLASH 期望
-        source: '/api/v1/:path*',
-        destination: `${BACKEND_URL}/api/v1/:path*/`,
-      },
-      {
-        source: '/api/health',
-        destination: `${BACKEND_URL}/api/health/`,
-      },
-    ];
+    return {
+      // beforeFiles 优先于文件系统路由：根路径直接出宣传页（URL 保持 /）
+      beforeFiles: [
+        {
+          source: '/',
+          destination: '/gaodinintriduce/index.html',
+        },
+      ],
+      afterFiles: [
+        {
+          // 宣传页干净路径（与 canonical 保持一致，地址栏不显示 index.html）
+          source: '/gaodinintriduce',
+          destination: '/gaodinintriduce/index.html',
+        },
+        {
+          source: '/gaodinintriduce/',
+          destination: '/gaodinintriduce/index.html',
+        },
+        {
+          // 转发到后端时统一补尾部斜杠，匹配 Django APPEND_SLASH 期望
+          source: '/api/v1/:path*',
+          destination: `${BACKEND_URL}/api/v1/:path*/`,
+        },
+        {
+          source: '/api/health',
+          destination: `${BACKEND_URL}/api/health/`,
+        },
+      ],
+      fallback: [],
+    };
   },
 };
 

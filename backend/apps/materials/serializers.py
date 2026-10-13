@@ -31,14 +31,15 @@ class MaterialListSerializer(serializers.ModelSerializer):
     # 出参统一 camelCase
     contentType = serializers.CharField(source="content_type", read_only=True)
     hashSha256 = serializers.CharField(source="hash_sha256", read_only=True)
+    objectKey = serializers.CharField(source="object_key", read_only=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
         model = Material
         fields = [
             "id", "type", "typeName", "name", "url", "size",
-            "contentType", "hashSha256", "tags", "uploaderName",
-            "createdAt",
+            "contentType", "hashSha256", "objectKey", "tags",
+            "uploaderName", "createdAt",
         ]
 
 
