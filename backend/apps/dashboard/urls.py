@@ -19,4 +19,5 @@ urlpatterns = [
     path("distribution/", views.PlatformDistributionView.as_view(), name="distribution"),
     path("top-contents/", views.TopContentsView.as_view(), name="top-contents"),
     path("publish-queue/", views.PublishQueueView.as_view(), name="publish-queue"),
+    path("sync-stats/", views.SyncStatsView.as_view(), name="sync-stats"),
 ]

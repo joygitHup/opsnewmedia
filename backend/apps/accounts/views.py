@@ -16,6 +16,7 @@ from apps.common.constants import AccountStatus, ErrorCode
 from apps.common.exceptions import BusinessError
 from apps.common.pagination import StandardPagination
 from apps.common.response import ok
+from apps.common.team_scope import resolve_team_id as _resolve_team_id
 
 from . import services
 from .models import Account
@@ -28,19 +29,6 @@ from .serializers import (
     OAuthCallbackSerializer,
     OAuthStartSerializer,
 )
-
-
-def _resolve_team_id(request: Request) -> int:
-    """从 query / 当前用户推断 team_id。"""
-    team_id = request.query_params.get("teamId") or request.data.get("teamId")
-    if team_id:
-        try:
-            return int(team_id)
-        except (TypeError, ValueError):
-            raise BusinessError(ErrorCode.INVALID_PARAM, "teamId 非法")
-    if request.user.current_team_id:
-        return request.user.current_team_id
-    raise BusinessError(ErrorCode.BUSINESS_ERROR, "尚未选择团队")
 
 
 @extend_schema_view(
@@ -61,10 +49,7 @@ class AccountViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "followers", "last_synced_at"]
 
     def get_queryset(self):
-        user = self.request.user
-        team_id = self.request.query_params.get("teamId") or (
-            user.current_team_id if user.current_team_id else None
-        )
+        team_id = _resolve_team_id(self.request, required=False)
         qs = Account.objects.select_related("added_by")
         if team_id:
             qs = qs.for_team(team_id)

@@ -26,6 +26,9 @@ import {
   ChevronRight,
   FileText,
   Bell,
+  BookOpen,
+  ClipboardCheck,
+  Gem,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -40,6 +43,7 @@ const menuItems = [
       { icon: FileEdit, label: '内容创作', href: '/editor' },
       { icon: FileText, label: '我的草稿', href: '/content' },
       { icon: Send, label: '一键分发', href: '/distribute' },
+      { icon: ClipboardCheck, label: '审核中心', href: '/reviews' },
       { icon: Bell, label: '消息中心', href: '/notifications' },
     ],
   },
@@ -48,6 +52,7 @@ const menuItems = [
     items: [
       { icon: Users, label: '账号管理', href: '/accounts' },
       { icon: FolderOpen, label: '素材库', href: '/materials' },
+      { icon: BookOpen, label: '知识库', href: '/knowledge' },
     ],
   },
   {
@@ -59,6 +64,7 @@ const menuItems = [
   {
     title: '系统',
     items: [
+      { icon: Gem, label: '套餐与升级', href: '/pricing' },
       { icon: Settings, label: '个人设置', href: '/settings' },
     ],
   },

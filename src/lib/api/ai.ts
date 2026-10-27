@@ -7,28 +7,33 @@ export interface GenerateBody {
   length?: number;
   tone?: string;
   keywords?: string[];
+  useKnowledge?: boolean;
 }
 
 export interface PolishBody {
   content: string;
   platform?: PlatformType;
   mode?: 'lite' | 'formal' | 'casual' | 'rewrite';
+  useKnowledge?: boolean;
 }
 
 export interface TitleBody {
   content: string;
   platform?: PlatformType;
   count?: number;
+  useKnowledge?: boolean;
 }
 
 export interface TagsBody {
   content: string;
   platform?: PlatformType;
   count?: number;
+  useKnowledge?: boolean;
 }
 
 export interface GenerateResult {
   output: string;
+  sources?: { docId: number; docTitle: string; chunkIdx: number; score: number }[];
 }
 
 export interface TitleResult {

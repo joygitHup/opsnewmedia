@@ -169,6 +169,10 @@ export default function AccountsPage() {
   };
 
   const handleOauth = async (platform: PlatformType) => {
+    if (!PLATFORM_CONFIG[platform].supported) {
+      toast.info('该平台暂未接入授权');
+      return;
+    }
     try {
       const result = await accountsApi.oauthStart({
         platform,
@@ -221,7 +225,12 @@ export default function AccountsPage() {
           <SelectContent>
             <SelectItem value="all">全部平台</SelectItem>
             {Object.entries(PLATFORM_CONFIG).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v.name}</SelectItem>
+              <SelectItem key={k} value={k} disabled={!v.supported}>
+                {v.name}
+                {!v.supported && (
+                  <span className="ml-1.5 text-[10px] text-zinc-400">即将支持</span>
+                )}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -289,9 +298,11 @@ export default function AccountsPage() {
                     <button
                       key={key}
                       type="button"
+                      disabled={!cfg.supported}
                       onClick={() => setBindPlatform(platform)}
-                      onDoubleClick={() => setBindStep(2)}
-                      className={`relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                      onDoubleClick={() => cfg.supported && setBindStep(2)}
+                      title={cfg.supported ? cfg.name : '该平台暂未接入，即将支持'}
+                      className={`relative flex items-center gap-3 rounded-xl border p-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                         active
                           ? 'border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500 dark:bg-indigo-950/30'
                           : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
@@ -305,9 +316,15 @@ export default function AccountsPage() {
                       </span>
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{cfg.name}</span>
-                        <span className="block text-xs text-zinc-400">
-                          {boundCount > 0 ? `已绑定 ${boundCount} 个` : '未绑定'}
-                        </span>
+                        {cfg.supported ? (
+                          <span className="block text-xs text-zinc-400">
+                            {boundCount > 0 ? `已绑定 ${boundCount} 个` : '未绑定'}
+                          </span>
+                        ) : (
+                          <span className="mt-0.5 inline-flex rounded bg-zinc-100 px-1 py-0.5 text-[10px] leading-none text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                            即将支持
+                          </span>
+                        )}
                       </span>
                       {active && (
                         <span className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white">
@@ -322,6 +339,7 @@ export default function AccountsPage() {
                 <Button variant="outline" onClick={() => setShowBind(false)}>取消</Button>
                 <Button
                   onClick={() => setBindStep(2)}
+                  disabled={!PLATFORM_CONFIG[bindPlatform].supported}
                   className="bg-gradient-to-r from-indigo-500 to-purple-600"
                 >
                   下一步
@@ -344,8 +362,13 @@ export default function AccountsPage() {
               {/* OAuth 授权 */}
               <button
                 type="button"
+                aria-disabled={!PLATFORM_CONFIG[bindPlatform].supported}
                 onClick={() => handleOauth(bindPlatform)}
-                className="group flex w-full items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 text-left transition-all hover:border-indigo-400 hover:bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/40"
+                className={`group flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all ${
+                  PLATFORM_CONFIG[bindPlatform].supported
+                    ? 'border-indigo-200 bg-indigo-50/50 hover:border-indigo-400 hover:bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-950/20 dark:hover:bg-indigo-950/40'
+                    : 'cursor-not-allowed border-zinc-200 bg-zinc-50 opacity-50 dark:border-zinc-800 dark:bg-zinc-900'
+                }`}
               >
                 <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
                   <ShieldCheck className="h-5 w-5" />
@@ -356,7 +379,9 @@ export default function AccountsPage() {
                     <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-medium text-white">推荐</span>
                   </span>
                   <span className="mt-0.5 block text-xs text-zinc-500">
-                    安全授权，自动同步账号信息、粉丝与发布数据
+                    {PLATFORM_CONFIG[bindPlatform].supported
+                      ? '安全授权，自动同步账号信息、粉丝与发布数据'
+                      : '该平台暂未接入授权，敬请期待'}
                   </span>
                 </span>
                 <Link2 className="h-4 w-4 flex-shrink-0 text-indigo-400 transition-transform group-hover:translate-x-0.5" />

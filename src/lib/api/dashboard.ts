@@ -55,6 +55,13 @@ export interface DateRange {
   days?: number;
 }
 
+export interface SyncStatsResult {
+  synced: number;
+  skipped: number;
+  failed: number;
+  errors: { accountId: number; message: string }[];
+}
+
 export const dashboardApi = {
   overview: (range?: DateRange) =>
     http.get<OverviewData>('/dashboard/overview/', { query: range as Record<string, string | number | undefined> }),
@@ -66,4 +73,6 @@ export const dashboardApi = {
     http.get<{ items: TopContentItem[] }>('/dashboard/top-contents/', { query: { limit } }),
   publishQueue: (limit = 20) =>
     http.get<{ items: PublishQueueItem[] }>('/dashboard/publish-queue/', { query: { limit } }),
+  syncStats: () =>
+    http.post<SyncStatsResult>('/dashboard/sync-stats/', {}),
 };

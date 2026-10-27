@@ -99,6 +99,25 @@ def _call_llm(
     return output
 
 
+def _rag_block(*, team_id: int, query: str, top_k: int = 5) -> tuple[str, list[dict]]:
+    """检索知识库并组装引用块；任何异常静默降级（不打断 AI 主流程）。"""
+    try:
+        from apps.knowledge.services import build_rag_context
+
+        context, sources = build_rag_context(team_id=team_id, query=query, top_k=top_k)
+        if not context:
+            return "", []
+        block = (
+            "\n\n【企业知识库引用内容】\n"
+            f"{context}\n"
+            "（请优先依据以上引用内容作答；引用不足时可结合常识补充）"
+        )
+        return block, sources
+    except Exception:  # noqa: BLE001
+        logger.warning("rag_context_failed team=%s", team_id, exc_info=True)
+        return "", []
+
+
 def _platform_hint(platform: str) -> str:
     """根据目标平台给 LLM 注入风格提示。"""
     if not platform or platform not in dict(PlatformType.choices):
@@ -125,13 +144,18 @@ def generate_content(
     length: int = 800,
     tone: str = "",
     keywords: list[str] | None = None,
-) -> str:
-    """内容生成。"""
+    use_knowledge: bool = False,
+) -> tuple[str, list[dict]]:
+    """内容生成。返回 (output, sources)。"""
     platform_hint = _platform_hint(platform)
+    rag_block, sources = (
+        _rag_block(team_id=team_id, query=prompt) if use_knowledge else ("", [])
+    )
     sys_prompt = (
         "你是一名多平台内容运营专家。"
         f"目标平台：{platform_hint}。"
         "请按用户要求生成 Markdown 正文，结构清晰、段落分明。"
+        f"{rag_block}"
     )
     kw_part = f"\n关键词：{'，'.join(keywords)}" if keywords else ""
     tone_part = f"\n语气风格：{tone}" if tone else ""
@@ -140,15 +164,16 @@ def generate_content(
         f"目标字数：约 {length} 字。\n"
         "请直接输出正文，不要解释。"
     )
-    return _call_llm(
+    output = _call_llm(
         system_prompt=sys_prompt,
         user_prompt=user_prompt,
         user=user,
         team_id=team_id,
         action="generate",
         platform=platform,
-        params={"length": length, "tone": tone, "keywords": keywords or []},
+        params={"length": length, "tone": tone, "keywords": keywords or [], "rag": bool(sources)},
     )
+    return output, sources
 
 
 def polish_content(
@@ -158,9 +183,13 @@ def polish_content(
     content: str,
     platform: str = "",
     mode: str = "lite",
+    use_knowledge: bool = False,
 ) -> str:
     """内容润色。"""
     platform_hint = _platform_hint(platform)
+    rag_block, _ = (
+        _rag_block(team_id=team_id, query=content[:500]) if use_knowledge else ("", [])
+    )
     mode_hint = {
         "lite": "仅润色错别字与标点，保持原意",
         "formal": "改写为正式商务风格",
@@ -172,6 +201,7 @@ def polish_content(
         f"目标平台：{platform_hint}。"
         f"润色模式：{mode_hint}。"
         "保持原文核心观点不变，只优化表达。直接输出润色后正文，不要解释。"
+        f"{rag_block}"
     )
     return _call_llm(
         system_prompt=sys_prompt,
@@ -191,13 +221,18 @@ def generate_titles(
     content: str,
     platform: str = "",
     count: int = 3,
+    use_knowledge: bool = False,
 ) -> list[str]:
     """标题生成。"""
     platform_hint = _platform_hint(platform)
+    rag_block, _ = (
+        _rag_block(team_id=team_id, query=content[:500]) if use_knowledge else ("", [])
+    )
     sys_prompt = (
         f"你是多平台运营专家。目标平台：{platform_hint}。"
         f"请基于正文生成 {count} 个候选标题，按平台风格调整。"
         "输出 JSON 数组（纯字符串），不要解释、不要包装。"
+        f"{rag_block}"
     )
     raw = _call_llm(
         system_prompt=sys_prompt,
@@ -226,13 +261,18 @@ def recommend_tags(
     content: str,
     platform: str = "",
     count: int = 5,
+    use_knowledge: bool = False,
 ) -> list[str]:
     """标签推荐。"""
     platform_hint = _platform_hint(platform)
+    rag_block, _ = (
+        _rag_block(team_id=team_id, query=content[:500]) if use_knowledge else ("", [])
+    )
     sys_prompt = (
         f"你是多平台运营专家。目标平台：{platform_hint}。"
         f"请从正文中提取 {count} 个最相关的标签关键词。"
         "输出 JSON 数组（纯字符串），不要解释。"
+        f"{rag_block}"
     )
     raw = _call_llm(
         system_prompt=sys_prompt,

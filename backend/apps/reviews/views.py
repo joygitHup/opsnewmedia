@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from apps.common.constants import ErrorCode
 from apps.common.exceptions import BusinessError
 from apps.common.response import ok
+from apps.common.team_scope import resolve_team_id as _resolve_team_id
 from apps.content.models import ContentDraft
 
 from . import services
@@ -29,12 +30,7 @@ class PendingReviewsView(APIView):
 
     @extend_schema(summary="待审列表")
     def get(self, request: Request) -> Response:
-        team_id = (
-            request.query_params.get("teamId")
-            or (request.user.current_team_id if request.user.current_team_id else None)
-        )
-        if not team_id:
-            raise BusinessError(ErrorCode.BUSINESS_ERROR, "尚未选择团队")
+        team_id = _resolve_team_id(request)
         flows = ReviewFlow.objects.filter(
             team_id=team_id,
             current_stage__in=["submit", "approve", "final"],

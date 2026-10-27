@@ -58,12 +58,12 @@ export default function DistributePage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [keyword, setKeyword] = useState('');
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (silent = false) => {
     if (!user?.currentTeamId) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const query: Record<string, string | number | undefined> = {
         teamId: user.currentTeamId,
@@ -74,15 +74,25 @@ export default function DistributePage() {
       const res = await publishApi.list(query);
       setTasks(res.list);
     } catch (err) {
-      toast.error('加载任务失败：' + (err as Error).message);
+      if (!silent) toast.error('加载任务失败：' + (err as Error).message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [user?.currentTeamId, filterStatus, keyword]);
 
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
+
+  // 存在进行中的任务时每 5 秒静默轮询，避免列表闪烁
+  useEffect(() => {
+    const hasActive = tasks.some(
+      (t) => t.status === 'pending' || t.status === 'publishing',
+    );
+    if (!hasActive) return;
+    const timer = setInterval(() => fetchTasks(true), 5000);
+    return () => clearInterval(timer);
+  }, [tasks, fetchTasks]);
 
   const handleRetry = async (task: PublishTask) => {
     try {
@@ -120,7 +130,7 @@ export default function DistributePage() {
           <h1 className="text-2xl font-bold">发布分发</h1>
           <p className="text-sm text-zinc-500 mt-1">管理多平台发布任务</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchTasks}>
+        <Button variant="outline" size="sm" onClick={() => fetchTasks()}>
           <RefreshCw className="w-4 h-4 mr-1" />
           刷新
         </Button>

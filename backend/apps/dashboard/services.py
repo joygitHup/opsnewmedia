@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from typing import Any
 
@@ -20,6 +21,8 @@ from apps.content.models import ContentDraft
 from apps.publish.models import PublishTask
 
 from .models import PlatformStats
+
+logger = logging.getLogger(__name__)
 
 
 def _date_range(start=None, end=None, days: int = 30):
@@ -146,3 +149,54 @@ def get_publish_queue(*, team_id: int, limit: int = 20) -> list[dict]:
         }
         for t in rows
     ]
+
+
+def sync_platform_stats(*, accounts) -> dict:
+    """按账号拉取平台数据写入 PlatformStats。
+
+    单账号失败不影响整体：未实现的适配器记 skipped，其他异常记 failed。
+    """
+    from apps.integrations.registry import get_adapter
+
+    today = timezone.now().date()
+    result: dict[str, Any] = {"synced": 0, "skipped": 0, "failed": 0, "errors": []}
+    for account in accounts:
+        adapter = get_adapter(account.platform)
+        if adapter is None:
+            result["skipped"] += 1
+            continue
+        try:
+            stats = adapter.get_stats(account)
+            PlatformStats.objects.update_or_create(
+                account=account,
+                date=today,
+                defaults={
+                    "team_id": account.team_id,
+                    "views": stats.views,
+                    "likes": stats.likes,
+                    "comments": stats.comments,
+                    "shares": stats.shares,
+                    "followers": stats.followers,
+                    "raw": stats.raw,
+                },
+            )
+            # 同步账号粉丝数
+            account.followers = stats.followers
+            account.last_synced_at = timezone.now()
+            account.save(update_fields=["followers", "last_synced_at", "updated_at"])
+            result["synced"] += 1
+        except NotImplementedError:
+            result["skipped"] += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("sync_stats_failed account=%s", account.id)
+            result["failed"] += 1
+            result["errors"].append(
+                {"accountId": account.id, "message": str(exc)[:200]}
+            )
+    return result
+
+
+def sync_team_stats(*, team_id: int) -> dict:
+    """同步指定团队的 active 账号数据（看板「同步数据」按钮）。"""
+    accounts = Account.objects.for_team(team_id).active()
+    return sync_platform_stats(accounts=accounts)

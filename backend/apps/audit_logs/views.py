@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.common.constants import ErrorCode
 from apps.common.exceptions import BusinessError
 from apps.common.pagination import StandardPagination
+from apps.common.team_scope import resolve_team_id
 
 from .models import AuditLog
 from .serializers import AuditLogDetailSerializer, AuditLogListSerializer
@@ -20,12 +21,8 @@ class AuditLogListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        # 仅团队 admin 可查看团队日志；普通用户看自己的
-        team_id = self.request.query_params.get("teamId") or (
-            user.current_team_id if user.current_team_id else None
-        )
-        if not team_id:
-            raise BusinessError(ErrorCode.BUSINESS_ERROR, "尚未选择团队")
+        # 仅团队 admin 可查看团队日志；普通用户看自己的（先校验团队归属）
+        team_id = resolve_team_id(self.request)
         is_admin = user.is_team_admin(team_id)
         qs = AuditLog.objects.select_related("user", "team")
         if is_admin:

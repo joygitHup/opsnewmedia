@@ -11,6 +11,8 @@ import {
   Eye,
   Clock,
   Video,
+  ClipboardCheck,
+  Undo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PLATFORM_CONFIG } from '@/types';
 import { contentApi, type ContentDraft } from '@/lib/api/content';
+import { reviewsApi } from '@/lib/api/reviews';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { toast } from 'sonner';
 
@@ -54,6 +57,7 @@ export default function ContentListPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deletingDraft, setDeletingDraft] = useState<ContentDraft | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [submittingId, setSubmittingId] = useState<number | null>(null);
 
   const fetchDrafts = useCallback(async () => {
     if (!user?.currentTeamId) {
@@ -93,6 +97,33 @@ export default function ContentListPage() {
     } finally {
       setDeleting(false);
       setDeletingDraft(null);
+    }
+  };
+
+  const handleSubmitReview = async (draft: ContentDraft) => {
+    setSubmittingId(draft.id);
+    try {
+      await reviewsApi.submit(draft.id);
+      toast.success('已提交审核');
+      await fetchDrafts();
+    } catch (err) {
+      toast.error('提交审核失败：' + (err as Error).message);
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  const [revertingId, setRevertingId] = useState<number | null>(null);
+  const handleRevertPublished = async (draft: ContentDraft) => {
+    setRevertingId(draft.id);
+    try {
+      await contentApi.setStatus(draft.id, 'draft');
+      toast.success('已撤回发布，可继续编辑');
+      await fetchDrafts();
+    } catch (err) {
+      toast.error('撤回失败：' + (err as Error).message);
+    } finally {
+      setRevertingId(null);
     }
   };
 
@@ -222,6 +253,42 @@ export default function ContentListPage() {
                           <Eye className="w-3.5 h-3.5" />
                         </Button>
                       </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-1.5 text-[11px] text-zinc-500"
+                        disabled={d.status !== 'published' || revertingId === d.id}
+                        onClick={() => handleRevertPublished(d)}
+                        title={d.status === 'published' ? '撤回发布，回到草稿状态继续编辑' : '仅已发布草稿可撤回'}
+                      >
+                        {revertingId === d.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Undo2 className="w-3.5 h-3.5" />
+                        )}
+                        撤回
+                      </Button>
+                      <Button
+                        onClick={() => handleSubmitReview(d)}
+                        title={
+                          d.status === 'pending'
+                            ? '审核中'
+                            : d.status === 'published'
+                              ? '已通过'
+                              : '提交审核'
+                        }
+                      >
+                        {submittingId === d.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ClipboardCheck className="w-3.5 h-3.5" />
+                        )}
+                        {d.status === 'pending'
+                          ? '审核中'
+                          : d.status === 'published'
+                            ? '已通过'
+                            : '提交审核'}
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"

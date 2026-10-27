@@ -11,6 +11,8 @@ import {
   Wand2,
   Plus,
   Loader2,
+  BookOpen,
+  History,
 } from 'lucide-react';
 import { MarkdownEditor, type MarkdownEditorHandle } from '@/components/editor/markdown-editor';
 import { Button } from '@/components/ui/button';
@@ -27,9 +29,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { PLATFORM_CONFIG, type PlatformType } from '@/types';
-import { contentApi, type ContentDraftDetail } from '@/lib/api/content';
+import {
+  contentApi,
+  type ContentDraftDetail,
+  type ContentVersionBrief,
+  type ContentVersionDetail,
+} from '@/lib/api/content';
+import { markdownToHtml } from '@/lib/markdown';
 import { accountsApi, type Account } from '@/lib/api/accounts';
 import { publishApi } from '@/lib/api/publish';
 import { aiApi } from '@/lib/api/ai';
@@ -54,6 +72,7 @@ export default function EditorPage() {
   const [aiDialog, setAiDialog] = useState<null | 'generate' | 'polish' | 'title' | 'tags'>(null);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiUseKb, setAiUseKb] = useState(false);
 
   // 标签输入
   const [tagInput, setTagInput] = useState('');
@@ -63,6 +82,16 @@ export default function EditorPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<Set<number>>(new Set());
   const [publishing, setPublishing] = useState(false);
+
+  // 版本历史
+  const [versionDialogOpen, setVersionDialogOpen] = useState(false);
+  const [versions, setVersions] = useState<ContentVersionBrief[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [selectedVersionNo, setSelectedVersionNo] = useState<number | null>(null);
+  const [versionDetail, setVersionDetail] = useState<ContentVersionDetail | null>(null);
+  const [versionDetailLoading, setVersionDetailLoading] = useState(false);
+  const [rollbackConfirmOpen, setRollbackConfirmOpen] = useState(false);
+  const [rollingBack, setRollingBack] = useState(false);
 
   // 排版编辑器
   const editorRef = useRef<MarkdownEditorHandle>(null);
@@ -86,7 +115,7 @@ export default function EditorPage() {
       setTitle(d.title);
       setContentMd(d.contentMd || '');
       setTags(d.tags || []);
-      setPlatforms(d.platforms || []);
+      setPlatforms((d.platforms || []).filter((p) => PLATFORM_CONFIG[p]?.supported));
       setCoverUrl(d.coverUrl || '');
     } catch (err) {
       toast.error('加载草稿失败：' + (err as Error).message);
@@ -203,10 +232,68 @@ export default function EditorPage() {
   };
 
   const togglePlatform = (p: PlatformType) => {
+    if (!PLATFORM_CONFIG[p].supported) return;
     if (platforms.includes(p)) {
       setPlatforms(platforms.filter((x) => x !== p));
     } else {
       setPlatforms([...platforms, p]);
+    }
+  };
+
+  // ---- 版本历史 ----
+  const loadVersion = async (id: number, versionNo: number) => {
+    setSelectedVersionNo(versionNo);
+    setVersionDetail(null);
+    setVersionDetailLoading(true);
+    try {
+      const detail = await contentApi.versionDetail(id, versionNo);
+      setVersionDetail(detail);
+    } catch (err) {
+      setVersionDetail(null);
+      toast.error('加载版本详情失败：' + (err as Error).message);
+    } finally {
+      setVersionDetailLoading(false);
+    }
+  };
+
+  const openVersions = async () => {
+    if (!originalDraft) return;
+    setVersionDialogOpen(true);
+    setVersions([]);
+    setSelectedVersionNo(null);
+    setVersionDetail(null);
+    setVersionsLoading(true);
+    try {
+      const list = await contentApi.versions(originalDraft.id);
+      setVersions(list);
+      if (list.length > 0) {
+        await loadVersion(originalDraft.id, list[0].versionNo);
+      }
+    } catch (err) {
+      toast.error('加载版本历史失败：' + (err as Error).message);
+    } finally {
+      setVersionsLoading(false);
+    }
+  };
+
+  const handleRollback = async () => {
+    if (!originalDraft || !versionDetail) return;
+    setRollingBack(true);
+    try {
+      const updated = await contentApi.rollback(originalDraft.id, versionDetail.versionNo);
+      setOriginalDraft(updated);
+      setTitle(updated.title);
+      setContentMd(updated.contentMd || '');
+      setTags(updated.tags || []);
+      setPlatforms((updated.platforms || []).filter((p) => PLATFORM_CONFIG[p]?.supported));
+      setCoverUrl(updated.coverUrl || '');
+      toast.success(`已回滚到 v${versionDetail.versionNo}`);
+      setRollbackConfirmOpen(false);
+      setVersionDialogOpen(false);
+    } catch (err) {
+      toast.error('回滚失败：' + (err as Error).message);
+    } finally {
+      setRollingBack(false);
     }
   };
 
@@ -227,13 +314,22 @@ export default function EditorPage() {
         const r = await aiApi.generate({
           prompt: aiInput || title || '请帮我写一篇关于运营的文章',
           length: 800,
+          useKnowledge: aiUseKb,
         });
         setContentMd((prev) => (prev ? `${prev}\n\n${r.output}` : r.output));
-        toast.success('生成完成');
+        const cited = r.sources ?? [];
+        toast.success('生成完成', {
+          description: cited.length
+            ? `已引用知识库：${cited.map((s) => `《${s.docTitle}》`).join('、')}`
+            : aiUseKb
+              ? '知识库未检索到相关内容，已按通用知识生成'
+              : undefined,
+        });
       } else if (aiDialog === 'polish') {
         const r = await aiApi.polish({
           content: aiInput || contentMd,
           mode: 'lite',
+          useKnowledge: aiUseKb,
         });
         setContentMd(r.output);
         toast.success('润色完成');
@@ -241,6 +337,7 @@ export default function EditorPage() {
         const r = await aiApi.title({
           content: contentMd,
           count: 3,
+          useKnowledge: aiUseKb,
         });
         toast.success(`已生成 ${r.options.length} 个候选标题`, {
           description: r.options.join('\n'),
@@ -249,6 +346,7 @@ export default function EditorPage() {
         const r = await aiApi.tags({
           content: contentMd,
           count: 5,
+          useKnowledge: aiUseKb,
         });
         const newTags = r.tags.filter((t) => !tags.includes(t));
         setTags([...tags, ...newTags]);
@@ -290,6 +388,12 @@ export default function EditorPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {originalDraft && (
+            <Button variant="outline" className="gap-1.5" onClick={openVersions}>
+              <History className="w-4 h-4" />
+              版本
+            </Button>
+          )}
           <DropdownAiButton onPick={(t) => { setAiDialog(t); setAiInput(''); }} />
           <Button onClick={handleSave} disabled={saving} className="gap-1.5">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -311,8 +415,11 @@ export default function EditorPage() {
           return (
             <button
               key={k}
+              type="button"
               onClick={() => togglePlatform(p)}
-              className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${
+              disabled={!v.supported}
+              title={v.supported ? v.name : '该平台暂未接入，即将支持'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                 active
                   ? 'border-transparent text-white'
                   : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800'
@@ -320,6 +427,11 @@ export default function EditorPage() {
               style={active ? { backgroundColor: v.color } : {}}
             >
               {v.name}
+              {!v.supported && (
+                <span className="rounded bg-zinc-100 px-1 py-0.5 text-[9px] leading-none text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                  即将支持
+                </span>
+              )}
             </button>
           );
         })}
@@ -421,6 +533,16 @@ export default function EditorPage() {
               }
               className="min-h-[120px]"
             />
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={aiUseKb}
+                onChange={(e) => setAiUseKb(e.target.checked)}
+                className="w-4 h-4 accent-indigo-500"
+              />
+              <BookOpen className="w-4 h-4 text-indigo-500" />
+              引用知识库（检索团队知识文档辅助生成）
+            </label>
           </div>
           <DialogFooter>
             <Button
@@ -499,6 +621,142 @@ export default function EditorPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 版本历史弹窗 */}
+      <Dialog open={versionDialogOpen} onOpenChange={setVersionDialogOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-indigo-500" />
+              版本历史
+            </DialogTitle>
+            <DialogDescription>
+              查看草稿的历史版本，可将内容回滚到任意版本
+            </DialogDescription>
+          </DialogHeader>
+          {versionsLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+            </div>
+          ) : versions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-zinc-400">
+              <History className="w-10 h-10 mb-2" />
+              <p className="text-sm">暂无历史版本</p>
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 gap-3 overflow-hidden">
+              <div className="w-48 flex-shrink-0 space-y-1 overflow-y-auto border-r pr-2">
+                {versions.map((v) => {
+                  const active = selectedVersionNo === v.versionNo;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => originalDraft && loadVersion(originalDraft.id, v.versionNo)}
+                      className={`w-full rounded-lg border px-2.5 py-2 text-left transition-colors ${
+                        active
+                          ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/40'
+                          : 'border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium">v{v.versionNo}</span>
+                        <span className="text-[10px] text-zinc-400 truncate">
+                          {v.createdByName || '—'}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[10px] text-zinc-400">
+                        {new Date(v.createdAt).toLocaleString('zh-CN')}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="min-w-0 flex-1 overflow-y-auto">
+                {versionDetailLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+                  </div>
+                ) : versionDetail ? (
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="font-medium truncate">{versionDetail.title || '无标题'}</h4>
+                      <div className="mt-1 text-[11px] text-zinc-400">
+                        v{versionDetail.versionNo} · {versionDetail.createdByName || '—'} ·{' '}
+                        {versionDetail.createdAt
+                          ? new Date(versionDetail.createdAt).toLocaleString('zh-CN')
+                          : '—'}
+                      </div>
+                      {versionDetail.changelog && (
+                        <p className="mt-1 text-xs text-zinc-500">变更说明：{versionDetail.changelog}</p>
+                      )}
+                    </div>
+                    <div
+                      className="md-preview min-h-[240px] rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900"
+                      dangerouslySetInnerHTML={{
+                        __html: markdownToHtml(versionDetail.contentMd || ''),
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-16 text-sm text-zinc-400">
+                    选择左侧版本查看详情
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVersionDialogOpen(false)}>
+              关闭
+            </Button>
+            <Button
+              className="gap-1.5"
+              disabled={!versionDetail || versionDetailLoading || rollingBack}
+              onClick={() => setRollbackConfirmOpen(true)}
+            >
+              {rollingBack ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <History className="w-4 h-4" />
+              )}
+              回滚到此版本
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 回滚二次确认 */}
+      <AlertDialog open={rollbackConfirmOpen} onOpenChange={setRollbackConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认回滚版本</AlertDialogTitle>
+            <AlertDialogDescription>
+              将用该版本（v{versionDetail?.versionNo}）覆盖当前内容，当前未保存修改会丢失。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rollingBack}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleRollback();
+              }}
+              disabled={rollingBack}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {rollingBack ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                  回滚中...
+                </>
+              ) : (
+                '确认回滚'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

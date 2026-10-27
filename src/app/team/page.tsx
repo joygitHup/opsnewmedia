@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Users,
   UserPlus,
@@ -16,6 +17,7 @@ import {
   CheckCircle2,
   Pencil,
   ShieldCheck,
+  ArrowUpRight,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -56,7 +58,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { teamsApi, type Team, type TeamMember, type RoleMatrix } from '@/lib/api/teams';
+import { teamsApi, type Team, type TeamMember, type RoleMatrix, type PlanInfo } from '@/lib/api/teams';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { toast } from 'sonner';
 
@@ -74,6 +76,7 @@ export default function TeamPage() {
   const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [roleMatrix, setRoleMatrix] = useState<RoleMatrix | null>(null);
+  const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
@@ -95,13 +98,15 @@ export default function TeamPage() {
     }
     setLoading(true);
     try {
-      const [listRes, current] = await Promise.all([
+      const [listRes, current, plan] = await Promise.all([
         teamsApi.list({ pageSize: 50 }),
         teamsApi.current(),
+        teamsApi.plan(),
       ]);
       setTeams(listRes.list);
       setCurrentTeam(current);
       setMembers(current.members || []);
+      setPlanInfo(plan);
       try {
         const matrix = await teamsApi.roles();
         setRoleMatrix(matrix);
@@ -406,6 +411,47 @@ export default function TeamPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 套餐与额度 */}
+      {planInfo && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">套餐与额度</CardTitle>
+              <CardDescription className="text-xs">当前团队套餐与资源使用情况</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/pricing">
+                升级套餐
+                <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-500" />
+                <span className="text-zinc-500">当前套餐</span>
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  {planInfo.plans.find((p) => p.value === planInfo.currentPlan)?.label || planInfo.currentPlan}
+                </span>
+              </div>
+              {[
+                { label: '账号额度', used: planInfo.usage.accounts, limit: planInfo.plans.find((p) => p.value === planInfo.currentPlan)?.limits.maxAccounts },
+                { label: '平台额度', used: planInfo.usage.platforms, limit: planInfo.plans.find((p) => p.value === planInfo.currentPlan)?.limits.maxPlatforms },
+                { label: '成员额度', used: planInfo.usage.members, limit: planInfo.plans.find((p) => p.value === planInfo.currentPlan)?.limits.maxMembers },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-2">
+                  <span className="text-zinc-500">{item.label}</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                    {item.used} / {item.limit === null || item.limit === undefined ? '不限' : item.limit}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 角色权限矩阵 */}
       {roleMatrix && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -11,6 +11,7 @@ import {
   Users,
   ArrowUpRight,
   Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Card,
@@ -92,34 +93,52 @@ export default function DashboardPage() {
   const [distribution, setDistribution] = useState<PlatformDistributionItem[]>([]);
   const [topContents, setTopContents] = useState<TopContentItem[]>([]);
   const [queue, setQueue] = useState<PublishQueueItem[]>([]);
+  const [syncing, setSyncing] = useState(false);
 
   const days = timeRange === 'today' ? 1 : timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!user?.currentTeamId) {
       setLoading(false);
       return;
     }
     setLoading(true);
-    Promise.all([
-      dashboardApi.overview({ days }),
-      dashboardApi.trend({ days }),
-      dashboardApi.distribution({ days }),
-      dashboardApi.topContents(10),
-      dashboardApi.publishQueue(20),
-    ])
-      .then(([ov, tr, di, tc, q]) => {
-        setOverview(ov);
-        setTrend(tr.points || []);
-        setDistribution(di.items || []);
-        setTopContents(tc.items || []);
-        setQueue(q.items || []);
-      })
-      .catch((err) => {
-        toast.error('加载看板数据失败：' + (err as Error).message);
-      })
-      .finally(() => setLoading(false));
+    try {
+      const [ov, tr, di, tc, q] = await Promise.all([
+        dashboardApi.overview({ days }),
+        dashboardApi.trend({ days }),
+        dashboardApi.distribution({ days }),
+        dashboardApi.topContents(10),
+        dashboardApi.publishQueue(20),
+      ]);
+      setOverview(ov);
+      setTrend(tr.points || []);
+      setDistribution(di.items || []);
+      setTopContents(tc.items || []);
+      setQueue(q.items || []);
+    } catch (err) {
+      toast.error('加载看板数据失败：' + (err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }, [user?.currentTeamId, days]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await dashboardApi.syncStats();
+      toast.success(`同步完成：成功 ${res.synced}，跳过 ${res.skipped}，失败 ${res.failed}`);
+      await loadData();
+    } catch (err) {
+      toast.error('同步数据失败：' + (err as Error).message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -190,6 +209,16 @@ export default function DashboardPage() {
     color: PLATFORM_CONFIG[d.platform as PlatformType]?.color || '#94a3b8',
   }));
 
+  const isEmpty =
+    overview !== null &&
+    [
+      overview.totalViews,
+      overview.totalLikes,
+      overview.totalComments,
+      overview.totalShares,
+      overview.totalFollowers,
+    ].every((v) => !v);
+
   return (
     <div className="space-y-6">
       {/* 页面标题 */}
@@ -199,6 +228,10 @@ export default function DashboardPage() {
           <p className="text-sm text-zinc-500 mt-1">查看全平台内容数据表现与趋势分析</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" className="h-9 gap-1.5" onClick={handleSync} disabled={syncing}>
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? '同步中...' : '同步数据'}
+          </Button>
           <Select defaultValue="all">
             <SelectTrigger className="w-32 h-9">
               <SelectValue placeholder="全部平台" />
@@ -258,6 +291,10 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      {isEmpty && (
+        <p className="text-sm text-zinc-400">暂无数据，可点击右上角同步数据</p>
+      )}
 
       {/* 图表区域 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

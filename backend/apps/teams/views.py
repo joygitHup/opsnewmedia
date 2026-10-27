@@ -9,7 +9,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.constants import TeamRole
+from apps.common.constants import ErrorCode, TeamRole
 from apps.common.exceptions import BusinessError
 from apps.common.pagination import StandardPagination
 from apps.common.response import ok
@@ -149,8 +149,12 @@ class TeamViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="upgrade")
     def upgrade(self, request: Request, pk: int = None) -> Response:
-        """升级团队套餐。"""
+        """升级团队套餐（仅团队管理员可操作）。"""
         team = self.get_object()
+        if not request.user.is_team_admin(team.id):
+            raise BusinessError(
+                ErrorCode.FORBIDDEN, "仅团队管理员可升级套餐", status_code=403
+            )
         plan = request.data.get("plan")
         if not plan:
             raise BusinessError(400, "缺少 plan")

@@ -11,6 +11,7 @@ from apps.common.constants import DraftStatus, ErrorCode, PlatformType
 from apps.common.exceptions import BusinessError
 from apps.common.pagination import StandardPagination
 from apps.common.response import ok
+from apps.common.team_scope import resolve_team_id as _resolve_team_id
 
 from . import services
 from .models import ContentDraft, ContentVersion
@@ -24,18 +25,6 @@ from .serializers import (
     ContentVersionDetailSerializer,
     RollbackWriteSerializer,
 )
-
-
-def _resolve_team_id(request: Request) -> int:
-    team_id = request.query_params.get("teamId") or request.data.get("teamId")
-    if team_id:
-        try:
-            return int(team_id)
-        except (TypeError, ValueError):
-            raise BusinessError(ErrorCode.INVALID_PARAM, "teamId 非法")
-    if request.user.current_team_id:
-        return request.user.current_team_id
-    raise BusinessError(ErrorCode.BUSINESS_ERROR, "尚未选择团队")
 
 
 @extend_schema_view(
@@ -56,10 +45,7 @@ class ContentDraftViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "updated_at", "version_no"]
 
     def get_queryset(self):
-        user = self.request.user
-        team_id = self.request.query_params.get("teamId") or (
-            user.current_team_id if user.current_team_id else None
-        )
+        team_id = _resolve_team_id(self.request, required=False)
         qs = ContentDraft.objects.select_related("author")
         if team_id:
             qs = qs.for_team(team_id)

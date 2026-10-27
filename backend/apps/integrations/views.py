@@ -15,6 +15,7 @@ from apps.accounts.serializers import AccountDetailSerializer
 from apps.common.constants import ErrorCode
 from apps.common.exceptions import BusinessError
 from apps.common.response import ok
+from apps.common.team_scope import resolve_team_id
 
 from . import registry
 
@@ -74,9 +75,7 @@ class OAuthCallbackView(APIView):
         redirect_uri = request.build_absolute_uri(
             f"/api/v1/integrations/oauth/{platform}/callback/"
         )
-        team_id = request.user.current_team_id
-        if team_id is None:
-            raise BusinessError(ErrorCode.BUSINESS_ERROR, "尚未选择团队")
+        team_id = resolve_team_id(request)
         account = account_services.handle_oauth_callback(
             platform=platform,
             code=code,

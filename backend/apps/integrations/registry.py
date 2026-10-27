@@ -5,6 +5,9 @@
 """
 from __future__ import annotations
 
+import inspect
+import re
+from functools import lru_cache
 from typing import Dict, Type
 
 from apps.accounts.platform_base import BasePlatformAdapter
@@ -48,7 +51,34 @@ def list_supported_platforms() -> list[dict]:
     ]
 
 
+_REQUIRED_METHODS = ("get_authorize_url", "publish", "get_stats")
+
+
+@lru_cache(maxsize=None)
+def is_platform_supported(platform: str) -> bool:
+    """平台是否已真实接入（授权/发布/数据同步均已实现）。
+
+    仅注册了占位适配器（方法体仍抛 NotImplementedError）的平台视为未接入，
+    用于 OAuth 起点与发布任务创建前的友好拦截，避免用户创建必然失败的任务。
+    """
+    cls = _REGISTRY.get(platform)
+    if cls is None:
+        return False
+    for method_name in _REQUIRED_METHODS:
+        method = getattr(cls, method_name, None)
+        if method is None:
+            return False
+        try:
+            source = inspect.getsource(method)
+        except (OSError, TypeError):
+            return False
+        if re.search(r"raise\s+NotImplementedError", source):
+            return False
+    return True
+
+
 def register_adapter(platform: str, adapter_cls: Type[BasePlatformAdapter]) -> None:
     """运行时注册新平台（用于插件化扩展）。"""
     _REGISTRY[platform] = adapter_cls
     _INSTANCES.pop(platform, None)
+    is_platform_supported.cache_clear()

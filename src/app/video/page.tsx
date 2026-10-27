@@ -12,6 +12,7 @@ import {
   Sparkles,
   ImageIcon,
   Trash2,
+  BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -75,6 +76,7 @@ export default function VideoCreatePage() {
 
   // AI 脚本
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiUseKb, setAiUseKb] = useState(false);
 
   // 发布
   const [publishDialog, setPublishDialog] = useState(false);
@@ -90,7 +92,7 @@ export default function VideoCreatePage() {
       setTitle(d.title);
       setCaption(d.contentMd || '');
       setTags(d.tags || []);
-      setPlatforms(d.platforms || []);
+      setPlatforms((d.platforms || []).filter((p) => PLATFORM_CONFIG[p]?.supported));
       setMediaKey(d.mediaKey || '');
       setMediaName(d.mediaName || '');
       setMediaUrl(d.mediaUrl || '');
@@ -272,9 +274,17 @@ export default function VideoCreatePage() {
       const r = await aiApi.generate({
         prompt: `请为短视频《${topic}》创作一份适合抖音/小红书/视频号的口播脚本与发布文案：包含 3 个备选标题、前 3 秒黄金开场、分镜口播正文、结尾互动引导，以及 5 个话题标签。`,
         length: 600,
+        useKnowledge: aiUseKb,
       });
       setCaption((prev) => (prev ? `${prev}\n\n${r.output}` : r.output));
-      toast.success('脚本已生成');
+      const cited = r.sources ?? [];
+      toast.success('脚本已生成', {
+        description: cited.length
+          ? `已引用知识库：${cited.map((s) => `《${s.docTitle}》`).join('、')}`
+          : aiUseKb
+            ? '知识库未检索到相关内容，已按通用知识生成'
+            : undefined,
+      });
     } catch (err) {
       toast.error('AI 生成失败：' + (err as Error).message);
     } finally {
@@ -283,6 +293,7 @@ export default function VideoCreatePage() {
   };
 
   const togglePlatform = (p: PlatformType) => {
+    if (!PLATFORM_CONFIG[p].supported) return;
     setPlatforms((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
     );
@@ -452,21 +463,33 @@ export default function VideoCreatePage() {
       <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="video-caption">视频文案 / 口播脚本</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs gap-1"
-            onClick={handleAiScript}
-            disabled={aiLoading}
-          >
-            {aiLoading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            )}
-            AI 写脚本
-          </Button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={aiUseKb}
+                onChange={(e) => setAiUseKb(e.target.checked)}
+                className="w-3.5 h-3.5 accent-indigo-500"
+              />
+              <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+              引用知识库
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1"
+              onClick={handleAiScript}
+              disabled={aiLoading}
+            >
+              {aiLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+              )}
+              AI 写脚本
+            </Button>
+          </div>
         </div>
         <Textarea
           id="video-caption"
@@ -525,13 +548,20 @@ export default function VideoCreatePage() {
                 key={p}
                 type="button"
                 onClick={() => togglePlatform(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                disabled={!cfg.supported}
+                title={cfg.supported ? cfg.name : '该平台暂未接入，即将支持'}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   active
                     ? 'border-indigo-500 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400'
                     : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900'
                 }`}
               >
                 {cfg.name}
+                {!cfg.supported && (
+                  <span className="rounded bg-zinc-100 px-1 py-0.5 text-[9px] leading-none text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                    即将支持
+                  </span>
+                )}
               </button>
             );
           })}

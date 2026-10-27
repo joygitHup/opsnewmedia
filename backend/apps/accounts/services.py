@@ -139,6 +139,12 @@ def refresh_account_token(*, account: Account) -> Account | None:
 
 def start_oauth(*, platform: str, redirect_uri: str) -> dict[str, str]:
     """生成授权 URL + state。state 落 Redis 5min 由 callback 校验。"""
+    from apps.integrations.registry import is_platform_supported
+
+    if not is_platform_supported(platform):
+        raise BusinessError(
+            ErrorCode.BUSINESS_ERROR, "该平台暂未接入授权，敬请期待"
+        )
     adapter = _get_adapter(platform)
     # 凭据完整性检查：appid/secret 未配置时给出友好提示，避免跳转到空白授权页
     appid = getattr(adapter, "appid", "") or adapter.credentials.get("appid", "")
@@ -153,7 +159,12 @@ def start_oauth(*, platform: str, redirect_uri: str) -> dict[str, str]:
     state = secrets.token_urlsafe(16)
     from django.core.cache import cache
     cache.set(f"oauth:state:{state}", {"platform": platform}, timeout=300)
-    url = adapter.get_authorize_url(state=state, redirect_uri=redirect_uri)
+    try:
+        url = adapter.get_authorize_url(state=state, redirect_uri=redirect_uri)
+    except NotImplementedError:
+        raise BusinessError(
+            ErrorCode.BUSINESS_ERROR, "该平台暂未接入授权，敬请期待"
+        )
     return {"authorize_url": url, "state": state}
 
 

@@ -1,4 +1,4 @@
-import type { PlatformType } from '@/types';
+﻿import type { PlatformType } from '@/types';
 
 /** 内容模板：从模板创建草稿时直接带入标题/正文/标签/目标平台 */
 export interface ContentTemplate {
@@ -64,7 +64,7 @@ export const CONTENT_TEMPLATES: ContentTemplate[] = [
 ---
 *（发布前请把 {} 占位内容替换为真实信息）*`,
     tags: ['新品发布', '产品测评'],
-    platforms: ['wechat_mp', 'zhihu'],
+    platforms: ['wechat', 'zhihu'],
   },
   {
     id: 'product-compare',
@@ -136,7 +136,7 @@ A：{解答}
 
 {总结 + 引导关注/收藏}`,
     tags: ['干货分享', '教程'],
-    platforms: ['zhihu', 'wechat_mp', 'xiaohongshu'],
+    platforms: ['zhihu', 'wechat', 'xiaohongshu'],
   },
   {
     id: 'knowledge-myth',
@@ -162,7 +162,7 @@ A：{解答}
 
 {一句话总结核心观点，引导转发}`,
     tags: ['科普', '避坑指南'],
-    platforms: ['wechat_mp', 'douyin'],
+    platforms: ['wechat', 'douyin'],
   },
   {
     id: 'marketing-festival',
@@ -190,7 +190,7 @@ A：{解答}
 
 {使用规则 / 名额限制等说明}`,
     tags: ['限时活动', '福利'],
-    platforms: ['wechat_mp', 'weibo', 'xiaohongshu'],
+    platforms: ['wechat', 'weibo', 'xiaohongshu'],
   },
   {
     id: 'marketing-livestream',
@@ -284,6 +284,6 @@ A：{解答}
 
 {给出你的判断，保持客观留有余地}`,
     tags: ['行业解读', '深度分析'],
-    platforms: ['wechat_mp', 'zhihu', 'weibo'],
+    platforms: ['wechat', 'zhihu', 'weibo'],
   },
 ];

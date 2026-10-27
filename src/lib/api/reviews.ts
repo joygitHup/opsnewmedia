@@ -4,12 +4,12 @@ export interface ReviewFlow {
   id: number;
   draft: number;
   draftTitle: string;
-  currentStage: string;
+  current_stage: string;
   submittedByName: string;
-  submittedAt: string | null;
-  approvedAt: string | null;
+  submitted_at: string | null;
+  approved_at: string | null;
   records: ReviewRecord[];
-  createdAt: string;
+  created_at: string;
 }
 
 export interface ReviewRecord {
@@ -18,7 +18,7 @@ export interface ReviewRecord {
   stage: string;
   comment: string;
   reviewerName: string;
-  createdAt: string;
+  created_at: string;
 }
 
 export interface SensitiveCheckResult {

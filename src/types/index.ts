@@ -12,14 +12,14 @@ export type MaterialType = 'image' | 'video' | 'audio' | 'document';
 
 export const PLATFORM_CONFIG: Record<
   PlatformType,
-  { name: string; color: string; icon: string }
+  { name: string; color: string; icon: string; supported: boolean }
 > = {
-  wechat: { name: '公众号', color: '#07C160', icon: 'message-circle' },
-  xiaohongshu: { name: '小红书', color: '#FF2442', icon: 'book-open' },
-  douyin: { name: '抖音', color: '#000000', icon: 'music' },
-  zhihu: { name: '知乎', color: '#0066FF', icon: 'help-circle' },
-  weibo: { name: '微博', color: '#E6162D', icon: 'at-sign' },
-  bilibili: { name: 'B站', color: '#FB7299', icon: 'play-circle' },
+  wechat: { name: '公众号', color: '#07C160', icon: 'message-circle', supported: true },
+  xiaohongshu: { name: '小红书', color: '#FF2442', icon: 'book-open', supported: true },
+  douyin: { name: '抖音', color: '#000000', icon: 'music', supported: false },
+  zhihu: { name: '知乎', color: '#0066FF', icon: 'help-circle', supported: false },
+  weibo: { name: '微博', color: '#E6162D', icon: 'at-sign', supported: false },
+  bilibili: { name: 'B站', color: '#FB7299', icon: 'play-circle', supported: false },
 };
 
 // 账号

@@ -107,6 +107,14 @@ def create_publish_task(
             "账号未授权或 Token 已失效",
         )
 
+    # 未接入平台前置拦截：避免创建必然失败的发布任务
+    from apps.integrations.registry import is_platform_supported
+
+    if not is_platform_supported(account.platform):
+        raise BusinessError(
+            ErrorCode.BUSINESS_ERROR, "该平台暂未接入发布，敬请期待"
+        )
+
     # 校验内容
     adapter = _get_adapter(account.platform)
     payload = dict(payload or {})

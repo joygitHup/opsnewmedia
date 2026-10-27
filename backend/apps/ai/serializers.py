@@ -18,6 +18,7 @@ class GenerateSerializer(serializers.Serializer):
         required=False,
         max_length=10,
     )
+    useKnowledge = serializers.BooleanField(required=False, default=False)
 
 
 class PolishSerializer(serializers.Serializer):
@@ -32,6 +33,7 @@ class PolishSerializer(serializers.Serializer):
         required=False,
         default="lite",
     )
+    useKnowledge = serializers.BooleanField(required=False, default=False)
 
 
 class TitleSerializer(serializers.Serializer):
@@ -42,6 +44,7 @@ class TitleSerializer(serializers.Serializer):
         choices=PlatformType.choices, required=False, allow_blank=True
     )
     count = serializers.IntegerField(min_value=1, max_value=10, required=False, default=3)
+    useKnowledge = serializers.BooleanField(required=False, default=False)
 
 
 class TagsSerializer(serializers.Serializer):
@@ -52,6 +55,7 @@ class TagsSerializer(serializers.Serializer):
         choices=PlatformType.choices, required=False, allow_blank=True
     )
     count = serializers.IntegerField(min_value=1, max_value=20, required=False, default=5)
+    useKnowledge = serializers.BooleanField(required=False, default=False)
 
 
 class AIResultSerializer(serializers.Serializer):

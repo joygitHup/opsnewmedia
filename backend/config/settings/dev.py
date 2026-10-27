@@ -23,3 +23,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # 日志级别放宽
 LOGGING["loggers"]["apps"]["level"] = "DEBUG"  # type: ignore[index]  # noqa: F405
+
+# 开发环境 Celery 任务同步执行（无需启动 worker）；
+# 生产环境去掉此项并由 celery worker 消费。
+CELERY_TASK_ALWAYS_EAGER = True

@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 from apps.common.constants import ErrorCode
 from apps.common.exceptions import BusinessError
 from apps.common.response import ok
+from apps.common.team_scope import resolve_team_id as _resolve_team_id
 
 from . import services
 from .serializers import (
@@ -26,15 +27,6 @@ from .serializers import (
 )
 
 
-def _resolve_team_id(request: Request) -> int:
-    team_id = request.data.get("teamId") or (
-        request.user.current_team_id if request.user.current_team_id else None
-    )
-    if not team_id:
-        raise BusinessError(ErrorCode.BUSINESS_ERROR, "尚未选择团队")
-    return team_id
-
-
 class GenerateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -43,7 +35,7 @@ class GenerateView(APIView):
         ser = GenerateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         team_id = _resolve_team_id(request)
-        output = services.generate_content(
+        output, sources = services.generate_content(
             user=request.user,
             team_id=team_id,
             prompt=ser.validated_data["prompt"],
@@ -51,8 +43,9 @@ class GenerateView(APIView):
             length=ser.validated_data.get("length", 800),
             tone=ser.validated_data.get("tone", ""),
             keywords=ser.validated_data.get("keywords"),
+            use_knowledge=ser.validated_data.get("useKnowledge", False),
         )
-        return ok({"output": output})
+        return ok({"output": output, "sources": sources})
 
 
 class PolishView(APIView):
@@ -69,6 +62,7 @@ class PolishView(APIView):
             content=ser.validated_data["content"],
             platform=ser.validated_data.get("platform", ""),
             mode=ser.validated_data.get("mode", "lite"),
+            use_knowledge=ser.validated_data.get("useKnowledge", False),
         )
         return ok({"output": output})
 
@@ -87,6 +81,7 @@ class TitleView(APIView):
             content=ser.validated_data["content"],
             platform=ser.validated_data.get("platform", ""),
             count=ser.validated_data.get("count", 3),
+            use_knowledge=ser.validated_data.get("useKnowledge", False),
         )
         return ok({"options": titles})
 
@@ -105,5 +100,6 @@ class TagsView(APIView):
             content=ser.validated_data["content"],
             platform=ser.validated_data.get("platform", ""),
             count=ser.validated_data.get("count", 5),
+            use_knowledge=ser.validated_data.get("useKnowledge", False),
         )
         return ok({"tags": tags})

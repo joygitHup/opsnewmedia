@@ -8,20 +8,9 @@ from rest_framework.views import APIView
 from apps.common.constants import ErrorCode
 from apps.common.exceptions import BusinessError
 from apps.common.response import ok
+from apps.common.team_scope import resolve_team_id as _resolve_team_id
 
 from . import services
-
-
-def _resolve_team_id(request: Request) -> int:
-    team_id = request.query_params.get("teamId") or (
-        request.user.current_team_id if request.user.current_team_id else None
-    )
-    if not team_id:
-        raise BusinessError(ErrorCode.BUSINESS_ERROR, "尚未选择团队")
-    try:
-        return int(team_id)
-    except (TypeError, ValueError):
-        raise BusinessError(ErrorCode.INVALID_PARAM, "teamId 非法")
 
 
 def _parse_dates(request: Request):
@@ -100,3 +89,12 @@ class PublishQueueView(APIView):
         return ok(
             {"items": services.get_publish_queue(team_id=team_id, limit=limit)}
         )
+
+
+class SyncStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(summary="同步平台数据")
+    def post(self, request: Request) -> Response:
+        team_id = _resolve_team_id(request)
+        return ok(services.sync_team_stats(team_id=team_id))

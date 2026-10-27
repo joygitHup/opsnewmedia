@@ -10,6 +10,7 @@ from apps.common.constants import ErrorCode, PublishTaskStatus
 from apps.common.exceptions import BusinessError
 from apps.common.pagination import StandardPagination
 from apps.common.response import ok
+from apps.common.team_scope import resolve_team_id as _resolve_team_id
 
 from . import services
 from .models import PublishTask
@@ -20,18 +21,6 @@ from .serializers import (
     PublishTaskListSerializer,
     PublishTaskWriteSerializer,
 )
-
-
-def _resolve_team_id(request: Request) -> int:
-    team_id = request.query_params.get("teamId") or request.data.get("teamId")
-    if team_id:
-        try:
-            return int(team_id)
-        except (TypeError, ValueError):
-            raise BusinessError(ErrorCode.INVALID_PARAM, "teamId 非法")
-    if request.user.current_team_id:
-        return request.user.current_team_id
-    raise BusinessError(ErrorCode.BUSINESS_ERROR, "尚未选择团队")
 
 
 @extend_schema_view(
@@ -50,10 +39,7 @@ class PublishTaskViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "scheduled_at", "published_at"]
 
     def get_queryset(self):
-        user = self.request.user
-        team_id = self.request.query_params.get("teamId") or (
-            user.current_team_id if user.current_team_id else None
-        )
+        team_id = _resolve_team_id(self.request, required=False)
         qs = PublishTask.objects.select_related(
             "draft", "account", "created_by"
         )
